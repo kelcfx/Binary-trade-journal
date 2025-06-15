@@ -295,12 +295,14 @@ export const Performance = ({ user, db, activeJournalId, theme, isSystemDark }: 
             );
         }
         // Always return a valid React element
-        return <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">No chart type selected.</div>;
+        return <div className={`flex items-center justify-center h-full ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>No chart type selected.</div>;
     };
 
     return (
         <div className="space-y-6">
-            <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">Performance Analytics</h1>
+            <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "text-gray-100" : "text-gray-800"}`}>
+                Performance Analytics
+            </h1>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 <StatCard title="Total Profit" value={performanceData.totalProfit} prefix="$" />
                 <StatCard title="Win Rate" value={((performanceData.totalSessionWins / (performanceData.totalSessionWins + performanceData.totalSessionLosses) || 0) * 100).toFixed(2)} suffix="%" />
@@ -311,27 +313,52 @@ export const Performance = ({ user, db, activeJournalId, theme, isSystemDark }: 
                 {worstAsset && bestAsset?.toString() !== worstAsset?.toString() && <StatCard title="Worst Asset" value={worstAsset[0]} prefix={worstAsset[1].profit > 0 ? `+$${worstAsset[1].profit}` : `-$${Math.abs(worstAsset[1].profit)}`} />}
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-                    <button onClick={() => setViewMode('single')} className={`py-2 px-4 font-medium ${viewMode === 'single' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Single Metric</button>
-                    <button onClick={() => setViewMode('compare')} className={`py-2 px-4 font-medium ${viewMode === 'compare' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Compare Metrics</button>
+            <div className={`p-6 rounded-xl shadow-lg border ${theme === "dark" || isSystemDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+                <div className={`flex border-b mb-4 ${theme === "dark" || isSystemDark ? "border-gray-700" : "border-gray-200"}`}>
+                    <button
+                        onClick={() => setViewMode('single')}
+                        className={`py-2 px-4 font-medium ${viewMode === 'single' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}
+                    >
+                        Single Metric
+                    </button>
+                    <button
+                        onClick={() => setViewMode('compare')}
+                        className={`py-2 px-4 font-medium ${viewMode === 'compare' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}
+                    >
+                        Compare Metrics
+                    </button>
                 </div>
 
                 {viewMode === 'single' ? (
                     <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                         <div className="flex items-center gap-2">
                             <label className="font-medium">Metric:</label>
-                            <select value={singleMetric} onChange={(e) => setSingleMetric(e.target.value)} className="bg-gray-100 dark:bg-gray-700 p-2 rounded-lg border border-gray-300 dark:border-gray-600">
+                            <select value={singleMetric} onChange={(e) => setSingleMetric(e.target.value)} className={`  p-2 rounded-lg border   ${theme === "dark" || isSystemDark ? "dark:border-gray-600 dark:bg-gray-700" : "bg-gray-100 border-gray-300"}`}>
                                 <option value="All">All Metrics</option>
                                 {Object.entries(ALL_METRICS).map(([key, { label }]) => <option key={key} value={key}>{label}</option>)}
                             </select>
                         </div>
                         {singleMetric !== 'All' && (<div className="flex items-center gap-2">
                             <label className="font-medium">Chart Type:</label>
-                            <div className="flex rounded-lg border border-gray-300 dark:border-gray-600">
-                                <button onClick={() => setChartType('Bar')} className={`px-3 py-1 rounded-l-md ${chartType === 'Bar' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>Bar</button>
-                                <button onClick={() => setChartType('Line')} className={`px-3 py-1 border-x border-gray-300 dark:border-gray-600 ${chartType === 'Line' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>Line</button>
-                                <button onClick={() => setChartType('Pie')} className={`px-3 py-1 rounded-r-md ${chartType === 'Pie' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}`}>Pie</button>
+                            <div className={`flex rounded-lg border ${theme === "dark" || isSystemDark ? "border-gray-600" : "border-gray-300"}`}>
+                                <button
+                                    onClick={() => setChartType('Bar')}
+                                    className={`px-3 py-1 rounded-l-md ${chartType === 'Bar' ? 'bg-blue-600 text-white' : theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+                                >
+                                    Bar
+                                </button>
+                                <button
+                                    onClick={() => setChartType('Line')}
+                                    className={`px-3 py-1 border-x ${theme === "dark" || isSystemDark ? "border-gray-600 bg-gray-700" : "border-gray-300 bg-gray-100"} ${chartType === 'Line' ? 'bg-blue-600 text-white' : ''}`}
+                                >
+                                    Line
+                                </button>
+                                <button
+                                    onClick={() => setChartType('Pie')}
+                                    className={`px-3 py-1 rounded-r-md ${chartType === 'Pie' ? 'bg-blue-600 text-white' : theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+                                >
+                                    Pie
+                                </button>
                             </div>
                         </div>)}
                     </div>

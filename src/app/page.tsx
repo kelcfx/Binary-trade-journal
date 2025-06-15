@@ -44,7 +44,7 @@ export default function Home() {
             `}
       </style>
       <AlertModal isOpen={alertInfo.show} onClose={() => setAlertInfo({ show: false, message: '' })} message={alertInfo.message} />
-      {user ? <TradingJournal user={user} theme={theme} setTheme={setTheme} isSystemDark={isSystemDark} /> : <LoginScreen showAlert={showAlert} />}
+      {user ? <TradingJournal user={user} theme={theme} setTheme={setTheme} isSystemDark={isSystemDark} /> : <LoginScreen showAlert={showAlert} theme={theme} isSystemDark={isSystemDark} />}
     </div>
   );
 }

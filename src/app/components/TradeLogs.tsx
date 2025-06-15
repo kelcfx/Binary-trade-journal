@@ -28,6 +28,8 @@ interface TradeLogsProps {
     db: Firestore,
     activeJournalId: string | null,
     showAlert: (message: string) => void;
+    theme?: string,
+    isSystemDark: boolean
 }
 
 interface Trade {
@@ -47,7 +49,7 @@ interface Trade {
     [key: string]: unknown;
 }
 
-export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAlert }: TradeLogsProps) => {
+export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAlert, theme, isSystemDark }: TradeLogsProps) => {
     const [trades, setTrades] = useState<Trade[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
@@ -202,9 +204,16 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">Trade Logs</h1>
+                <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "text-gray-100" : "text-gray-800"}`}>
+                    Trade Logs
+                </h1>
                 <div className="flex space-x-2">
-                    <button onClick={handleOpenNewModal} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"><PlusCircle className="mr-2 h-5 w-5" /> Add Session</button>
+                    <button
+                        onClick={handleOpenNewModal}
+                        className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                    >
+                        <PlusCircle className="mr-2 h-5 w-5" /> Add Session
+                    </button>
                     <button
                         onClick={() =>
                             downloadCSV(
@@ -224,12 +233,21 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                     </button>
                 </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
+            <div className={`bg-white p-4 rounded-xl shadow-lg border overflow-x-auto ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "border-gray-200"}`}>
                 <table className="w-full text-left min-w-[1000px]">
-                    <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700"><tr><th className="p-3">Date</th><th className="p-3">Asset</th><th className="p-3">Direction</th><th className="p-3">Trades (W/L)</th><th className="p-3">Session P/L</th><th className="p-3">Actions</th></tr></thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                    <thead className={`text-xs uppercase ${theme === "dark" || isSystemDark ? "text-gray-400 dark:bg-gray-700" : "text-gray-500 bg-gray-50"}`}>
+                        <tr>
+                            <th className="p-3">Date</th>
+                            <th className="p-3">Asset</th>
+                            <th className="p-3">Direction</th>
+                            <th className="p-3">Trades (W/L)</th>
+                            <th className="p-3">Session P/L</th>
+                            <th className="p-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className={`divide-y ${theme === "dark" || isSystemDark ? "dark:divide-gray-600" : "divide-gray-200"}`}>
                         {trades.map(trade => (
-                            <tr key={trade.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr key={trade.id} className={`hover:bg-gray-50 ${theme === "dark" || isSystemDark ? "dark:hover:bg-gray-700" : ""}`}>
                                 <td className="p-3">
                                     {trade.date
                                         ? (
@@ -248,14 +266,18 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                                 <td className="p-3">{trade.totalTrades !== undefined ? `${trade.totalTrades} (${trade.winningTrades}/${trade.losingTrades})` : 'N/A'}</td>
                                 <td className={`p-3 font-semibold ${(trade.sessionProfit ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>${(trade.sessionProfit ?? 0).toFixed(2)}</td>
                                 <td className="p-3 flex items-center space-x-2">
-                                    <button onClick={() => handleOpenEditModal(trade)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 rounded-full"><Edit className="w-4 h-4" /></button>
-                                    <button onClick={() => getAiAnalysis(trade)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-purple-500 rounded-full" title="Get AI Analysis"><Sparkles className="w-4 h-4" /></button>
+                                    <button onClick={() => handleOpenEditModal(trade)} className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "text-gray-400 hover:text-blue-600" : "text-gray-500 hover:text-blue-600"}`}>
+                                        <Edit className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => getAiAnalysis(trade)} className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "text-gray-400 hover:text-purple-500" : "text-gray-500 hover:text-purple-500"}`} title="Get AI Analysis">
+                                        <Sparkles className="w-4 h-4" />
+                                    </button>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                {trades.length === 0 && <p className="text-center p-4 text-gray-500 dark:text-gray-400">No trading sessions logged yet.</p>}
+                {trades.length === 0 && <p className={`text-center p-4 ${theme === "dark" || isSystemDark ? "text-gray-400" : "text-gray-500"}`}>No trading sessions logged yet.</p>}
             </div>
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTrade ? "Edit Trading Session" : "Log New Trading Session"}>
                 <TradeForm
@@ -276,8 +298,8 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                             : newTrade
                     }
                     onInputChange={handleInputChange}
-                    onSubmit={(e: React.FormEvent) => { 
-                        e.preventDefault(); 
+                    onSubmit={(e: React.FormEvent) => {
+                        e.preventDefault();
                         processAndSaveTrade(
                             editingTrade ||
                             {
@@ -289,20 +311,22 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                                 roi: newTrade.roi === '' ? undefined : Number(newTrade.roi),
                                 sessionProfit: newTrade.sessionProfit === '' ? undefined : Number(newTrade.sessionProfit),
                             }
-                        ); 
+                        );
                     }}
                     isManualProfit={isManualProfit}
                     setIsManualProfit={setIsManualProfit}
+                    theme={theme}
+                    isSystemDark={isSystemDark}
                 />
             </Modal>
             <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="AI Trade Analysis">
                 {isAiLoading ? (
                     <div className="flex flex-col items-center justify-center h-48">
                         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-500"></div>
-                        <p className="mt-4 text-gray-500 dark:text-gray-400">Analyzing your trade...</p>
+                        <p className={`mt-4 ${theme === "dark" || isSystemDark ? "text-gray-400" : "text-gray-500"}`}>Analyzing your trade...</p>
                     </div>
                 ) : (
-                    <div className="prose prose-sm dark:prose-invert max-h-96 overflow-y-auto" dangerouslySetInnerHTML={{ __html: aiAnalysis.replace(/\n/g, '<br />') }}></div>
+                        <div className={`prose-sm max-h-96 overflow-y-auto  ${theme === "dark" || isSystemDark ? "dark:prose-invert" : "prose"}`} dangerouslySetInnerHTML={{ __html: aiAnalysis.replace(/\n/g, '<br />') }}></div>
                 )}
             </Modal>
         </div>

@@ -20,19 +20,93 @@ interface TradeFormProps {
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
     isManualProfit: boolean;
     setIsManualProfit: Dispatch<SetStateAction<boolean>>;
+    theme?: string;
+    isSystemDark: boolean;
 }
 
-export const TradeForm = ({ tradeData, onInputChange, onSubmit, isManualProfit, setIsManualProfit }: TradeFormProps) => {
+export const TradeForm = ({ tradeData, onInputChange, onSubmit, isManualProfit, setIsManualProfit, theme, isSystemDark }: TradeFormProps) => {
     return (
+        // <form onSubmit={onSubmit} className="space-y-4">
+        //     <div className="flex justify-end items-center">
+        //         <label htmlFor="manual-profit-toggle" className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">Enter Profit Manually</label>
+        //         <button type="button" onClick={() => setIsManualProfit(!isManualProfit)} className={`${isManualProfit ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'} relative inline-flex items-center h-6 rounded-full w-11`}>
+        //             <span className={`${isManualProfit ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform`} />
+        //         </button>
+        //     </div>
+
+        //     <input name="asset" value={tradeData.asset} onChange={onInputChange} placeholder="Asset (e.g., EUR/USD)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+        //     <div className="grid grid-cols-2 gap-4">
+        //         <input
+        //             type="date"
+        //             name="date"
+        //             value={
+        //                 tradeData.date
+        //                     ? typeof tradeData.date === "string"
+        //                         ? tradeData.date
+        //                         : tradeData.date instanceof Date
+        //                             ? tradeData.date.toISOString().slice(0, 10)
+        //                             : "toDate" in tradeData.date && typeof tradeData.date.toDate === "function"
+        //                                 ? tradeData.date.toDate().toISOString().slice(0, 10)
+        //                                 : ""
+        //                     : ""
+        //             }
+        //             onChange={onInputChange}
+        //             required
+        //             className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg"
+        //         />
+        //         <input
+        //             type="time"
+        //             name="time"
+        //             value={tradeData.time}
+        //             onChange={onInputChange}
+        //             required
+        //             className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg"
+        //         />
+        //     </div>
+
+        //     {isManualProfit ? (
+        //         <input type="number" step="0.01" name="sessionProfit" value={tradeData.sessionProfit} onChange={onInputChange} placeholder="Session Profit/Loss ($)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+        //     ) : (
+        //         <>
+        //             <div className="grid grid-cols-2 gap-4">
+        //                 <input type="number" name="investmentPerTrade" value={tradeData.investmentPerTrade} onChange={onInputChange} placeholder="Investment per Trade ($)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+        //                 <input type="number" name="roi" value={tradeData.roi} onChange={onInputChange} placeholder="ROI (%)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+        //             </div>
+        //             <div className="grid grid-cols-2 gap-4">
+        //                 <input type="number" name="totalTrades" value={tradeData.totalTrades} onChange={onInputChange} placeholder="Total Trades" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+        //                 <input type="number" name="losingTrades" value={tradeData.losingTrades} onChange={onInputChange} placeholder="Losing Trades" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+        //             </div>
+        //         </>
+        //     )}
+        //     <select name="direction" value={tradeData.direction} onChange={onInputChange} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+        //         <option>Buy</option>
+        //         <option>Sell</option>
+        //     </select>
+        //     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">{tradeData.id ? 'Save Changes' : 'Log Trading Session'}</button>
+        // </form>
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="flex justify-end items-center">
-                <label htmlFor="manual-profit-toggle" className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">Enter Profit Manually</label>
-                <button type="button" onClick={() => setIsManualProfit(!isManualProfit)} className={`${isManualProfit ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'} relative inline-flex items-center h-6 rounded-full w-11`}>
+                <label htmlFor="manual-profit-toggle" className={`mr-2 text-sm font-medium ${theme === "dark" || isSystemDark ? "text-gray-300" : "text-gray-700"}`}>
+                    Enter Profit Manually
+                </label>
+                <button
+                    type="button"
+                    onClick={() => setIsManualProfit(!isManualProfit)}
+                    className={`${isManualProfit ? 'bg-blue-600' : theme === "dark" || isSystemDark ? 'bg-gray-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11`}
+                >
                     <span className={`${isManualProfit ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform`} />
                 </button>
             </div>
 
-            <input name="asset" value={tradeData.asset} onChange={onInputChange} placeholder="Asset (e.g., EUR/USD)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+            <input
+                name="asset"
+                value={tradeData.asset}
+                onChange={onInputChange}
+                placeholder="Asset (e.g., EUR/USD)"
+                required
+                className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+            />
+
             <div className="grid grid-cols-2 gap-4">
                 <input
                     type="date"
@@ -50,7 +124,7 @@ export const TradeForm = ({ tradeData, onInputChange, onSubmit, isManualProfit, 
                     }
                     onChange={onInputChange}
                     required
-                    className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg"
+                    className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
                 />
                 <input
                     type="time"
@@ -58,29 +132,82 @@ export const TradeForm = ({ tradeData, onInputChange, onSubmit, isManualProfit, 
                     value={tradeData.time}
                     onChange={onInputChange}
                     required
-                    className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg"
+                    className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
                 />
             </div>
 
             {isManualProfit ? (
-                <input type="number" step="0.01" name="sessionProfit" value={tradeData.sessionProfit} onChange={onInputChange} placeholder="Session Profit/Loss ($)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+                <input
+                    type="number"
+                    step="0.01"
+                    name="sessionProfit"
+                    value={tradeData.sessionProfit}
+                    onChange={onInputChange}
+                    placeholder="Session Profit/Loss ($)"
+                    required
+                    className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+                />
             ) : (
                 <>
                     <div className="grid grid-cols-2 gap-4">
-                        <input type="number" name="investmentPerTrade" value={tradeData.investmentPerTrade} onChange={onInputChange} placeholder="Investment per Trade ($)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
-                        <input type="number" name="roi" value={tradeData.roi} onChange={onInputChange} placeholder="ROI (%)" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+                        <input
+                            type="number"
+                            name="investmentPerTrade"
+                            value={tradeData.investmentPerTrade}
+                            onChange={onInputChange}
+                            placeholder="Investment per Trade ($)"
+                            required
+                            className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+                        />
+                        <input
+                            type="number"
+                            name="roi"
+                            value={tradeData.roi}
+                            onChange={onInputChange}
+                            placeholder="ROI (%)"
+                            required
+                            className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <input type="number" name="totalTrades" value={tradeData.totalTrades} onChange={onInputChange} placeholder="Total Trades" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
-                        <input type="number" name="losingTrades" value={tradeData.losingTrades} onChange={onInputChange} placeholder="Losing Trades" required className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg" />
+                        <input
+                            type="number"
+                            name="totalTrades"
+                            value={tradeData.totalTrades}
+                            onChange={onInputChange}
+                            placeholder="Total Trades"
+                            required
+                            className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+                        />
+                        <input
+                            type="number"
+                            name="losingTrades"
+                            value={tradeData.losingTrades}
+                            onChange={onInputChange}
+                            placeholder="Losing Trades"
+                            required
+                            className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+                        />
                     </div>
                 </>
             )}
-            <select name="direction" value={tradeData.direction} onChange={onInputChange} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+
+            <select
+                name="direction"
+                value={tradeData.direction}
+                onChange={onInputChange}
+                className={`w-full p-3 rounded-lg ${theme === "dark" || isSystemDark ? "bg-gray-700" : "bg-gray-100"}`}
+            >
                 <option>Buy</option>
                 <option>Sell</option>
             </select>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">{tradeData.id ? 'Save Changes' : 'Log Trading Session'}</button>
+
+            <button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+            >
+                {tradeData.id ? 'Save Changes' : 'Log Trading Session'}
+            </button>
         </form>
     );
 };

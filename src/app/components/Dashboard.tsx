@@ -4,14 +4,34 @@ import { useEffect, useMemo, useState } from "react";
 import { appId } from "../lib/firebaseConfig";
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Modal } from "./Modal";
-// import { Clock } from "lucide-react";
-
-// Custom Clock component for displaying time in different timezones
 import React from "react";
+import { User } from "firebase/auth";
+import { Firestore } from "firebase/firestore";
 
 interface ClockProps {
     label: string;
     timezone: string;
+}
+
+interface Journal {
+    id: string;
+    name: string;
+    createdAt: import("firebase/firestore").Timestamp | null; // Use Firebase Timestamp or null if not set
+    balance: number;
+    dailyProfitTarget: number;
+    weeklyProfitGoal: number;
+    riskPercentage: number;
+    [key: string]: unknown; // For any additional fields
+}
+
+interface DashboardProps {
+    user: User,
+    activeJournalData: Journal,
+    db: Firestore,
+    activeJournalId: string | null,
+    showAlert: (message: string) => void,
+    theme?: string,
+    isSystemDark: boolean
 }
 
 const Clock: React.FC<ClockProps> = ({ label, timezone }) => {
@@ -40,30 +60,8 @@ const Clock: React.FC<ClockProps> = ({ label, timezone }) => {
         </div>
     );
 };
-import { User } from "firebase/auth";
-import { Firestore } from "firebase/firestore";
 
-
-interface Journal {
-    id: string;
-    name: string;
-    createdAt: import("firebase/firestore").Timestamp | null; // Use Firebase Timestamp or null if not set
-    balance: number;
-    dailyProfitTarget: number;
-    weeklyProfitGoal: number;
-    riskPercentage: number;
-    [key: string]: unknown; // For any additional fields
-}
-
-interface DashboardProps {
-    user: User,
-    activeJournalData: Journal,
-    db: Firestore,
-    activeJournalId: string | null,
-    showAlert: (message: string) => void;
-}
-
-export const Dashboard = ({ user, activeJournalData, db, activeJournalId }: DashboardProps) => {
+export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme, isSystemDark }: DashboardProps) => {
     const [isManageBalanceModalOpen, setIsManageBalanceModalOpen] = useState(false);
     const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
@@ -162,11 +160,11 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId }: Dash
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">{getGreeting()}, {user.displayName || 'Trader'}!</h1>
-                <p className="text-lg text-gray-500 dark:text-gray-400">Welcome to your {activeJournalData.name}.</p>
+                <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>{getGreeting()}, {user.displayName || 'Trader'}!</h1>
+                <p className={`"text-lg ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Welcome to your {activeJournalData.name}.</p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+            <div className={`p-4 rounded-2xl shadow-lg border   ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "border-gray-200 bg-white"}`}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <Clock label="Onitsha" timezone="Africa/Lagos" />
                     <Clock label="London" timezone="Europe/London" />
@@ -177,12 +175,12 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId }: Dash
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div
-                    className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col cursor-pointer transition-transform transform hover:scale-[1.02]"
+                    className={`lg:col-span-2 rounded-2xl shadow-lg border flex flex-col cursor-pointer transition-transform transform hover:scale-[1.02] ${theme === "dark" || isSystemDark ? " dark:bg-gray-800 dark:border-gray-700" : "border-gray-200 bg-white"}`}
                     onClick={() => setIsManageBalanceModalOpen(true)}
                 >
                     <div className="flex flex-col items-center justify-center flex-grow p-6">
-                        <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-1">Trading Balance</h3>
-                        <p className="text-5xl font-bold text-gray-800 dark:text-gray-100">${activeJournalData.balance.toFixed(2)}</p>
+                        <h3 className={`text-md font-semibold mb-1 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Trading Balance</h3>
+                        <p className={`text-5xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>${activeJournalData.balance.toFixed(2)}</p>
                     </div>
                     <div className="h-32 -mx-1 -mb-1">
                         <ResponsiveContainer width="100%" height="100%">
@@ -204,35 +202,35 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId }: Dash
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer transition-transform transform hover:scale-105" onClick={() => setIsGoalModalOpen(true)}>
-                        <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-2">Profit Targets</h3>
+                    <div className={`p-6 rounded-2xl shadow-lg border cursor-pointer transition-transform transform hover:scale-105 ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"}`} onClick={() => setIsGoalModalOpen(true)}>
+                        <h3 className={`text-md font-semibold   mb-2 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Profit Targets</h3>
                         <div className="space-y-3">
                             <div>
                                 <div className="flex justify-between items-center text-sm mb-1">
-                                    <span className="font-medium text-gray-600 dark:text-gray-300">Daily</span>
+                                    <span className={`font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Daily</span>
                                     <span className={`font-bold ${todaysProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${todaysProfit.toFixed(2)} / ${activeJournalData.dailyProfitTarget.toFixed(2)}</span>
                                 </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                <div className={`w-full rounded-full h-2.5 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-200"}`}>
                                     <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, (todaysProfit / (activeJournalData.dailyProfitTarget || 1)) * 100)}%` }}></div>
                                 </div>
                             </div>
                             <div>
                                 <div className="flex justify-between items-center text-sm mb-1">
-                                    <span className="font-medium text-gray-600 dark:text-gray-300">Weekly</span>
+                                    <span className={`font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Weekly</span>
                                     <span className={`font-bold ${weeklyProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${weeklyProfit.toFixed(2)} / ${activeJournalData.weeklyProfitGoal.toFixed(2)}</span>
                                 </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                <div className={`w-full rounded-full h-2.5 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-200"}`}>
                                     <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, (weeklyProfit / (activeJournalData.weeklyProfitGoal || 1)) * 100)}%` }}></div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <button onClick={() => setIsRiskModalOpen(true)} className="w-full bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-center cursor-pointer transition-transform transform hover:scale-105">
-                        <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-1">Risk Management</h3>
+                    <button onClick={() => setIsRiskModalOpen(true)} className={`w-full p-6 rounded-2xl shadow-lg border   flex flex-col items-center justify-center text-center cursor-pointer transition-transform transform hover:scale-105 ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700 " : "bg-white border-gray-200 "}`}>
+                        <h3 className={`text-md font-semibold mb-1 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Risk Management</h3>
                         <div className="flex items-baseline space-x-2">
                             <span className="text-2xl font-bold text-red-500">{activeJournalData.riskPercentage}%</span>
-                            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">(${((activeJournalData.balance * activeJournalData.riskPercentage) / 100).toFixed(2)})</span>
+                            <span className={`text-lg font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>(${((activeJournalData.balance * activeJournalData.riskPercentage) / 100).toFixed(2)})</span>
                         </div>
                     </button>
                 </div>
@@ -240,8 +238,8 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId }: Dash
 
             <Modal isOpen={isManageBalanceModalOpen} onClose={() => setIsManageBalanceModalOpen(false)} title="Manage Balance">
                 <div className="space-y-4">
-                    <p className="text-gray-600 dark:text-gray-300">Enter amount to deposit or withdraw.</p>
-                    <input type="number" value={transactionAmount} onChange={(e) => setTransactionAmount(e.target.value)} placeholder="Amount" className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <p className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Enter amount to deposit or withdraw.</p>
+                    <input type="number" value={transactionAmount} onChange={(e) => setTransactionAmount(e.target.value)} placeholder="Amount" className={`w-full p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:text-gray-200 dark:bg-gray-700" : "text-gray-800 bg-gray-100"}`} />
                     <div className="flex space-x-4">
                         <button onClick={() => handleTransaction('deposit')} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg">Deposit</button>
                         <button onClick={() => handleTransaction('withdraw')} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg">Withdraw</button>
@@ -251,12 +249,12 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId }: Dash
             <Modal isOpen={isGoalModalOpen} onClose={() => setIsGoalModalOpen(false)} title="Update Profit Targets">
                 <div className="space-y-4">
                     <label className="block">
-                        <span className="text-gray-600 dark:text-gray-300">Daily Profit Target ($)</span>
-                        <input type="number" value={newGoals.daily} onChange={(e) => setNewGoals({ ...newGoals, daily: Number(e.target.value) })} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Daily Profit Target ($)</span>
+                        <input type="number" value={newGoals.daily} onChange={(e) => setNewGoals({ ...newGoals, daily: Number(e.target.value) })} className={`w-full p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700 dark:text-gray-200" : "bg-gray-100 text-gray-800"}`} />
                     </label>
                     <label className="block">
-                        <span className="text-gray-600 dark:text-gray-300">Weekly Profit Goal ($)</span>
-                        <input type="number" value={newGoals.weekly} onChange={(e) => setNewGoals({ ...newGoals, weekly: Number(e.target.value) })} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Weekly Profit Goal ($)</span>
+                        <input type="number" value={newGoals.weekly} onChange={(e) => setNewGoals({ ...newGoals, weekly: Number(e.target.value) })} className={`w-full p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700 dark:text-gray-200" : "bg-gray-100 text-gray-800"} `} />
                     </label>
                     <button onClick={handleGoalUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Save Goals</button>
                 </div>
@@ -264,10 +262,10 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId }: Dash
             <Modal isOpen={isRiskModalOpen} onClose={() => setIsRiskModalOpen(false)} title="Adjust Risk">
                 <div className="space-y-4">
                     <label className="block">
-                        <span className="text-gray-600 dark:text-gray-300">Risk Percentage per Trade (%)</span>
-                        <input type="number" value={newRisk} onChange={(e) => setNewRisk(Number(e.target.value))} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Risk Percentage per Trade (%)</span>
+                        <input type="number" value={newRisk} onChange={(e) => setNewRisk(Number(e.target.value))} className={`w-full p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700 dark:text-gray-200" : "bg-gray-100 text-gray-800"}`} />
                     </label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                    <p className={`text-sm text-center ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>
                         This will risk <span className="font-bold">${((activeJournalData.balance * newRisk) / 100).toFixed(2)}</span> of your current balance per trade.
                     </p>
                     <button onClick={handleRiskUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Set Risk</button>
