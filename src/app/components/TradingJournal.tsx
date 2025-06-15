@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, Dispatch, SetStateAction } from "react";
+import { useEffect, useState } from "react";
 import { appId, auth, db } from "../lib/firebaseConfig";
 import { signOut, User } from "firebase/auth";
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc } from "firebase/firestore";
@@ -18,7 +18,7 @@ import { AccountManager } from "./AccountManager";
 interface TradingJournalProp {
     user: User,
     theme?: string,
-    setTheme: Dispatch<SetStateAction<string>>,
+    setTheme: (theme: string) => void,
     isSystemDark: boolean
 }
 
@@ -133,7 +133,7 @@ export const TradingJournal = ({ user, theme, setTheme, isSystemDark }: TradingJ
             return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>;
         }
 
-        const props = { user, activeJournalData, db, activeJournalId, showAlert };
+        const props = { user, activeJournalData, db, activeJournalId, showAlert, theme, isSystemDark };
 
         switch (activeView) {
             case 'Dashboard': return <Dashboard {...props} />;

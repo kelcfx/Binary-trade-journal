@@ -21,7 +21,9 @@ interface PerformanceProps {
     activeJournalData: Journal,
     db: Firestore,
     activeJournalId: string | null,
-    showAlert: (message: string) => void;
+    showAlert: (message: string) => void,
+    theme?: string,
+    isSystemDark: boolean
 }
 
 interface Trade {
@@ -46,7 +48,7 @@ interface StatCardProps {
     suffix?: string;
 }
 
-export const Performance = ({ user, db, activeJournalId }: PerformanceProps) => {
+export const Performance = ({ user, db, activeJournalId, theme, isSystemDark }: PerformanceProps) => {
     const [trades, setTrades] = useState<Trade[]>([]);
     const [viewMode, setViewMode] = useState('single'); // 'single' or 'compare'
 
@@ -195,9 +197,9 @@ export const Performance = ({ user, db, activeJournalId }: PerformanceProps) => 
     };
 
     const StatCard = ({ title, value, prefix = '', suffix = '' }: StatCardProps) => (
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 text-center">
-            <h4 className="text-gray-500 dark:text-gray-400 font-medium">{title}</h4>
-            <p className="text-2xl font-bold text-gray-800 dark:text-gray-200">{prefix}{value}{suffix}</p>
+        <div className={`p-4 rounded-xl shadow-lg border text-center ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"}`}>
+            <h4 className={`font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>{title}</h4>
+            <p className={`text-2xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-200" : "text-gray-800"}`}>{prefix}{value}{suffix}</p>
         </div>
     );
 
@@ -206,7 +208,7 @@ export const Performance = ({ user, db, activeJournalId }: PerformanceProps) => 
     const worstAsset = assetPerformance[assetPerformance.length - 1];
 
     const renderChart = () => {
-        if (performanceData.chartData.length === 0) return <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">No data to display.</div>;
+        if (performanceData.chartData.length === 0) return <div className={`flex items-center justify-center h-full ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>No data to display.</div>;
 
         const tooltipProps = {
             formatter: tooltipValueFormatter,

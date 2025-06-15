@@ -9,6 +9,7 @@ import { WeekStatsModal } from './dateModal/WeekStatsModal';
 
 import { User } from "firebase/auth";
 import { Firestore } from "firebase/firestore";
+import { useTheme } from 'next-themes';
 
 interface Trade {
     id: string;
@@ -74,6 +75,9 @@ export const CalendarView = ({ user, db, activeJournalId }: CalendarProps) => {
     const [selectedDayStats, setSelectedDayStats] = useState<DayStats | null>(null);
     const [selectedWeekStats, setSelectedWeekStats] = useState<WeekStats | null>(null);
     const [trades, setTrades] = useState<Trade[]>([]);
+    const { theme } = useTheme();
+
+    const isSystemDark = theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     useEffect(() => {
         if (!activeJournalId || !appId) return;
@@ -155,11 +159,33 @@ export const CalendarView = ({ user, db, activeJournalId }: CalendarProps) => {
     };
 
     const renderHeader = () => (
-        <div className="flex justify-between items-center mb-6"><button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronLeft /></button><h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentDate)}</h2><button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronRight /></button></div>
+        <div className="flex justify-between items-center mb-6">
+            <button
+                onClick={() => changeMonth(-1)}
+                className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "dark:hover:bg-gray-700" : "hover:bg-gray-100"}`}
+            >
+                <ChevronLeft />
+            </button>
+            <h2 className={`text-2xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-200" : "text-gray-800"}`}>
+                {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentDate)}
+            </h2>
+            <button
+                onClick={() => changeMonth(1)}
+                className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "dark:hover:bg-gray-700" : "hover:bg-gray-100"}`}
+            >
+                <ChevronRight />
+            </button>
+        </div>
     );
 
     const renderDays = () => (
-        <div className="grid grid-cols-8 text-center text-gray-500 dark:text-gray-400 text-sm font-semibold">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Weekly'].map(day => <div key={day} className="py-2 border-b border-gray-200 dark:border-gray-700">{day}</div>)}</div>
+        <div className={`grid grid-cols-8 text-center text-sm font-semibold ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Weekly'].map(day => (
+                <div key={day} className={`py-2 border-b ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"}`}>
+                    {day}
+                </div>
+            ))}
+        </div>
     );
 
     const renderCells = () => {
@@ -202,7 +228,7 @@ export const CalendarView = ({ user, db, activeJournalId }: CalendarProps) => {
                             clickableClass = 'cursor-pointer hover:ring-2 hover:ring-blue-500';
                         }
                         return (
-                            <div key={dayStr} style={style} onClick={() => handleDayClick(dayStr)} className={`border-t border-r border-gray-200 dark:border-gray-700 p-2 h-32 flex flex-col transition-all duration-200 ${clickableClass} ${!isCurrentMonth ? 'bg-gray-50 dark:bg-gray-800/50 text-gray-400' : 'bg-white dark:bg-gray-800'}`}>
+                            <div key={dayStr} style={style} onClick={() => handleDayClick(dayStr)} className={`border-t border-r ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"} p-2 h-32 flex flex-col transition-all duration-200 ${clickableClass} ${!isCurrentMonth ? `${theme === "dark" || isSystemDark ? "dark:bg-gray-800/50 dark:text-gray-400" : "bg-gray-50 text-gray-400"}` : `${theme === "dark" || isSystemDark ? "dark:bg-gray-800" : "bg-white"}`}`}>
                                 <span className="font-bold self-end">{day.getDate()}</span>
                                 {stat && isCurrentMonth && (
                                     <div className={`mt-1 text-xs text-left font-medium ${stat.totalProfit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
@@ -213,25 +239,25 @@ export const CalendarView = ({ user, db, activeJournalId }: CalendarProps) => {
                             </div>
                         );
                     })}
-                    <div onClick={() => handleWeekClick(daysInWeek)} className={`border-t border-r border-gray-200 dark:border-gray-700 p-2 h-32 flex flex-col justify-center items-center text-center font-semibold ${hasTrades ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : 'text-gray-400'} ${weeklyProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    <div onClick={() => handleWeekClick(daysInWeek)} className={`border-t border-r ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"} p-2 h-32 flex flex-col justify-center items-center text-center font-semibold ${hasTrades ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : 'text-gray-400'} ${weeklyProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
                         {hasTrades && <span>${weeklyProfit.toFixed(2)}</span>}
                     </div>
                 </div>
             );
         }
-        return <div className="border-l border-b border-gray-200 dark:border-gray-700">{rows}</div>;
+        return <div className={`border-l border-b  ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"}`}>{rows}</div>;
     };
 
     return (
         <div className="space-y-6">
-            <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">Trading Calendar</h1>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+            <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800" }`}>Trading Calendar</h1>
+            <div className={`p-6 rounded-xl shadow-lg border ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"} `}>
                 {renderHeader()}
                 {renderDays()}
                 {renderCells()}
             </div>
-            {selectedDayStats && <DayStatsModal stats={selectedDayStats} onClose={() => setSelectedDayStats(null)} />}
-            {selectedWeekStats && <WeekStatsModal stats={selectedWeekStats} onClose={() => setSelectedWeekStats(null)} />}
+            {selectedDayStats && <DayStatsModal stats={selectedDayStats} onClose={() => setSelectedDayStats(null)} theme={theme} isSystemDark={isSystemDark} />}
+            {selectedWeekStats && <WeekStatsModal stats={selectedWeekStats} onClose={() => setSelectedWeekStats(null)} theme={theme} isSystemDark={isSystemDark} />}
         </div>
     );
 };

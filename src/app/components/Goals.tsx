@@ -22,7 +22,9 @@ interface GoalsProps {
     activeJournalData: Journal,
     db: Firestore,
     activeJournalId: string | null,
-    showAlert: (message: string) => void;
+    showAlert: (message: string) => void,
+    theme?: string,
+    isSystemDark: boolean
 }
 
 interface GoalHistory {
@@ -36,7 +38,7 @@ interface GoalHistory {
     [key: string]: unknown;
 }
 
-export const Goals = ({ user, activeJournalData, db, activeJournalId, showAlert }: GoalsProps) => {
+export const Goals = ({ user, activeJournalData, db, activeJournalId, showAlert, theme, isSystemDark }: GoalsProps) => {
     const [goalHistory, setGoalHistory] = useState<GoalHistory[]>([]);
     const [trades, setTrades] = useState<{ date: import("firebase/firestore").Timestamp, sessionProfit?: number }[]>([]);
 
@@ -135,9 +137,14 @@ export const Goals = ({ user, activeJournalData, db, activeJournalId, showAlert 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">Goal History</h1>
+                <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>Goal History</h1>
                 <div className="flex space-x-2">
-                    <button onClick={updateGoalHistory} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"><RefreshCw className="mr-2 h-5 w-5" /> Update History</button>
+                    <button
+                        onClick={updateGoalHistory}
+                        className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"
+                    >
+                        <RefreshCw className="mr-2 h-5 w-5" /> Update History
+                    </button>
                     <button
                         onClick={() =>
                             downloadCSV(
@@ -161,14 +168,20 @@ export const Goals = ({ user, activeJournalData, db, activeJournalId, showAlert 
                     </button>
                 </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
+            <div className={`p-4 rounded-xl shadow-lg border overflow-x-auto ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"}`}>
                 <table className="w-full text-left">
-                    <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700">
-                        <tr><th className="p-3">Date</th><th className="p-3">Type</th><th className="p-3">Target</th><th className="p-3">Achieved</th><th className="p-3">Status</th></tr>
+                    <thead className={`text-xs uppercase ${theme === "dark" || isSystemDark ? "dark:text-gray-400 dark:bg-gray-700" : "text-gray-500 bg-gray-50"}`}>
+                        <tr>
+                            <th className="p-3">Date</th>
+                            <th className="p-3">Type</th>
+                            <th className="p-3">Target</th>
+                            <th className="p-3">Achieved</th>
+                            <th className="p-3">Status</th>
+                        </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                    <tbody className={`divide-y ${theme === "dark" || isSystemDark ? "dark:divide-gray-600" : "divide-gray-200"}`}>
                         {goalHistory.map(g => (
-                            <tr key={g.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <tr key={g.id} className={`${theme === "dark" || isSystemDark ? "dark:hover:bg-gray-700" : "hover:bg-gray-50"}`}>
                                 <td className="p-3">
                                     {g.endDate
                                         ? (g.endDate instanceof Date
@@ -178,16 +191,24 @@ export const Goals = ({ user, activeJournalData, db, activeJournalId, showAlert 
                                                 : 'N/A'))
                                         : 'N/A'}
                                 </td>
-                                <td className="p-3">{g.type}</td>
-                                <td className="p-3">${g.target?.toFixed(2)}</td>
+                                <td className={`p-3 ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>{g.type}</td>
+                                <td className={`p-3 ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>${g.target?.toFixed(2)}</td>
                                 <td className={`p-3 font-semibold ${g.achieved >= 0 ? 'text-green-500' : 'text-red-500'}`}>${g.achieved?.toFixed(2)}</td>
-                                <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(g.status)}`}>{g.status}</span></td>
+                                <td className="p-3">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(g.status)}`}>
+                                        {g.status}
+                                    </span>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                {goalHistory.length === 0 && <p className="text-center p-4 text-gray-500 dark:text-gray-400">No goal history found. Click &quot;Update History&quot; to check for completed goals.</p>}
+                {goalHistory.length === 0 && (
+                    <p className={`text-center p-4 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>
+                        No goal history found. Click &quot;Update History&quot; to check for completed goals.
+                    </p>
+                )}
             </div>
-        </div>
+        </div>    
     );
 };

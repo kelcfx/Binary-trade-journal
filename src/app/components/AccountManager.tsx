@@ -26,10 +26,12 @@ interface AccpountManagerProps {
     activeJournalId: string | null,
     showAlert: (message: string) => void;
     journals: Journal[],
-    setActiveJournalId: Dispatch<SetStateAction<string | null>>
+    setActiveJournalId: Dispatch<SetStateAction<string | null>>,
+    theme?: string,
+    isSystemDark: boolean
 }
 
-export const AccountManager = ({ journals, activeJournalId, setActiveJournalId, user, showAlert }: AccpountManagerProps) => {
+export const AccountManager = ({ journals, activeJournalId, setActiveJournalId, user, showAlert, theme, isSystemDark }: AccpountManagerProps) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingJournal, setEditingJournal] = useState<Journal | null>(null);
     const [journalName, setJournalName] = useState('');
@@ -122,33 +124,75 @@ export const AccountManager = ({ journals, activeJournalId, setActiveJournalId, 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">Journal Manager</h1>
-                <button onClick={() => handleOpenModal()} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>Journal Manager</h1>
+                <button
+                    onClick={() => handleOpenModal()}
+                    className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg"
+                >
                     <PlusCircle className="mr-2 h-5 w-5" /> Add Journal
                 </button>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 space-y-4">
+            <div className={`p-6 rounded-xl shadow-lg border space-y-4 ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"}`}>
                 {journals.map(journal => (
-                    <div key={journal.id} className={`flex items-center justify-between p-4 rounded-lg ${activeJournalId === journal.id ? 'bg-blue-100 dark:bg-blue-500/20 border-blue-500 border-2' : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                    <div key={journal.id} className={`flex items-center justify-between p-4 rounded-lg ${activeJournalId === journal.id ? 'bg-blue-100 dark:bg-blue-500/20 border-blue-500 border-2' : `${theme === "dark" || isSystemDark ? "dark:bg-gray-700/50 dark:hover:bg-gray-700" : "bg-gray-50 hover:bg-gray-100"}`}`}>
                         <button onClick={() => setActiveJournalId(journal.id)} className="flex-1 text-left">
-                            <h3 className="font-semibold text-lg">{journal.name}</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Balance: ${journal.balance?.toFixed(2)}</p>
+                            <h3 className={`font-semibold text-lg ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>{journal.name}</h3>
+                            <p className={`text-sm ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-600"}`}>Balance: ${journal.balance?.toFixed(2)}</p>
                         </button>
                         <div className="flex items-center space-x-2">
-                            <button onClick={() => confirmResetJournal(journal)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-yellow-500 rounded-full" title="Reset Journal"><RefreshCw className="w-5 h-5" /></button>
-                            <button onClick={() => handleOpenModal(journal)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 rounded-full" title="Edit Journal"><Edit className="w-5 h-5" /></button>
-                            <button onClick={() => confirmDeleteJournal(journal.id, journal.name)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 rounded-full" title="Delete Journal"><Trash2 className="w-5 h-5" /></button>
+                            <button
+                                onClick={() => confirmResetJournal(journal)}
+                                className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"} hover:text-yellow-500`}
+                                title="Reset Journal"
+                            >
+                                <RefreshCw className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => handleOpenModal(journal)}
+                                className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"} hover:text-blue-600`}
+                                title="Edit Journal"
+                            >
+                                <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => confirmDeleteJournal(journal.id, journal.name)}
+                                className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"} hover:text-red-600`}
+                                title="Delete Journal"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
                         </div>
                     </div>
                 ))}
             </div>
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingJournal ? "Edit Journal" : "Create New Journal"}>
                 <div className="space-y-4">
-                    <label className="block"><span className="text-gray-600 dark:text-gray-300">Journal Name</span><input type="text" value={journalName} onChange={(e) => setJournalName(e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mt-1" /></label>
+                    <label className="block">
+                        <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Journal Name</span>
+                        <input
+                            type="text"
+                            value={journalName}
+                            onChange={(e) => setJournalName(e.target.value)}
+                            className={`w-full p-3 rounded-lg mt-1 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-100"}`}
+                        />
+                    </label>
                     {!editingJournal && (
-                        <label className="block"><span className="text-gray-600 dark:text-gray-300">Initial Balance ($)</span><input type="number" value={initialBalance} onChange={(e) => setInitialBalance(e.target.value)} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mt-1" /></label>
+                        <label className="block">
+                            <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Initial Balance ($)</span>
+                            <input
+                                type="number"
+                                value={initialBalance}
+                                onChange={(e) => setInitialBalance(e.target.value)}
+                                className={`w-full p-3 rounded-lg mt-1 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-100"}`}
+                            />
+                        </label>
                     )}
-                    <button onClick={handleSaveJournal} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">{editingJournal ? 'Save Changes' : 'Create Journal'}</button>
+                    <button
+                        onClick={handleSaveJournal}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg"
+                    >
+                        {editingJournal ? 'Save Changes' : 'Create Journal'}
+                    </button>
                 </div>
             </Modal>
             <ConfirmationModal

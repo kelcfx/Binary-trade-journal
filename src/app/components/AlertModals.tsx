@@ -41,9 +41,9 @@ export const ConfirmationModal = ({ isOpen, onClose, title, message, onConfirm }
                 <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full  ${theme === "dark" || isSystemDark ? "dark:bg-red-800/50" : "bg-red-100"} `}>
                     <AlertTriangle className={`h-6 w-6 ${theme === "dark" || isSystemDark ? "dark:text-red-400" : "text-red-600" }`} aria-hidden="true" />
                 </div>
-                <p className={`text-gray-600 dark:text-gray-300 ${theme === "dark" || isSystemDark} my-4`}>{message}</p>
+                <p className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"} my-4`}>{message}</p>
                 <div className="flex justify-center space-x-4">
-                    <button onClick={onClose} className="w-full bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-black dark:text-white font-bold py-2 px-4 rounded-lg">Cancel</button>
+                    <button onClick={onClose} className={`w-full ${theme === "dark" || isSystemDark ? "dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white" : "bg-gray-200  hover:bg-gray-300 text-black"} font-bold py-2 px-4 rounded-lg`}>Cancel</button>
                     <button onClick={(event) => { onConfirm(); onClose(event); }} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Confirm</button>
                 </div>
             </div>

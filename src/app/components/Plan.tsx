@@ -24,11 +24,13 @@ interface PlanProps {
     activeJournalData: Journal,
     db: Firestore,
     activeJournalId: string | null,
-    showAlert: (message: string) => void;
+    showAlert: (message: string) => void,
+    theme?: string,
+    isSystemDark: boolean
 }
 
 
-export const Plan = ({ user, activeJournalId, showAlert }: PlanProps) => {
+export const Plan = ({ user, activeJournalId, showAlert, theme, isSystemDark }: PlanProps) => {
     const initialPlanState = useMemo(() => ({
         startBalance: '',
         endBalance: '',
@@ -123,37 +125,76 @@ export const Plan = ({ user, activeJournalId, showAlert }: PlanProps) => {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100">Money Growth Plan</h1>
+            <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>Money Growth Plan</h1>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 space-y-4">
-                    <h2 className="text-2xl font-semibold">Define Your Plan</h2>
+                <div className={`p-6 rounded-xl shadow-lg border space-y-4 ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"}`}>
+                    <h2 className={`text-2xl font-semibold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>Define Your Plan</h2>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Starting Balance ($)</label>
-                        <input type="number" name="startBalance" value={plan.startBalance} onChange={handlePlanChange} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mt-1" />
+                        <label className={`block text-sm font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>Starting Balance ($)</label>
+                        <input
+                            type="number"
+                            name="startBalance"
+                            value={plan.startBalance}
+                            onChange={handlePlanChange}
+                            className={`w-full p-3 rounded-lg mt-1 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-100"}`}
+                        />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Goal Balance ($)</label>
-                        <input type="number" name="endBalance" value={plan.endBalance} onChange={handlePlanChange} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mt-1" />
+                        <label className={`block text-sm font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>Goal Balance ($)</label>
+                        <input
+                            type="number"
+                            name="endBalance"
+                            value={plan.endBalance}
+                            onChange={handlePlanChange}
+                            className={`w-full p-3 rounded-lg mt-1 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-100"}`}
+                        />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Number of Days</label>
-                        <input type="number" name="days" value={plan.days} onChange={handlePlanChange} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mt-1" />
+                        <label className={`block text-sm font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>Number of Days</label>
+                        <input
+                            type="number"
+                            name="days"
+                            value={plan.days}
+                            onChange={handlePlanChange}
+                            className={`w-full p-3 rounded-lg mt-1 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-100"}`}
+                        />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Max Drawdown (%)</label>
-                        <input type="number" name="drawdownPercentage" value={plan.drawdownPercentage} onChange={handlePlanChange} className="w-full bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mt-1" />
+                        <label className={`block text-sm font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>Max Drawdown (%)</label>
+                        <input
+                            type="number"
+                            name="drawdownPercentage"
+                            value={plan.drawdownPercentage}
+                            onChange={handlePlanChange}
+                            className={`w-full p-3 rounded-lg mt-1 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-100"}`}
+                        />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <button onClick={handleSavePlan} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">Save Plan</button>
-                        <button onClick={handleResetPlan} className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow flex items-center justify-center"><RefreshCw className="mr-2 h-5 w-5" /> Reset</button>
-                        <button onClick={() => downloadCSV(planData, 'growth-plan.csv')} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow flex items-center justify-center"><Download className="mr-2 h-5 w-5" /> Export</button>
+                        <button
+                            onClick={handleSavePlan}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                        >
+                            Save Plan
+                        </button>
+                        <button
+                            onClick={handleResetPlan}
+                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow flex items-center justify-center"
+                        >
+                            <RefreshCw className="mr-2 h-5 w-5" /> Reset
+                        </button>
+                        <button
+                            onClick={() => downloadCSV(planData, 'growth-plan.csv')}
+                            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow flex items-center justify-center"
+                        >
+                            <Download className="mr-2 h-5 w-5" /> Export
+                        </button>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                    <h2 className="text-2xl font-semibold mb-4">Your Daily Roadmap</h2>
+                <div className={`p-6 rounded-xl shadow-lg border ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"}`}>
+                    <h2 className={`text-2xl font-semibold mb-4 ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>Your Daily Roadmap</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700">
+                            <thead className={`text-xs uppercase ${theme === "dark" || isSystemDark ? "dark:text-gray-400 dark:bg-gray-700" : "text-gray-500 bg-gray-50"}`}>
                                 <tr>
                                     <th className="p-3">Day</th>
                                     <th className="p-3">Start Balance</th>
@@ -162,9 +203,9 @@ export const Plan = ({ user, activeJournalId, showAlert }: PlanProps) => {
                                     <th className="p-3">End Balance</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                            <tbody className={`divide-y ${theme === "dark" || isSystemDark ? "dark:divide-gray-600" : "divide-gray-200"}`}>
                                 {planData.map(day => (
-                                    <tr key={day.day} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <tr key={day.day} className={`${theme === "dark" || isSystemDark ? "dark:hover:bg-gray-700" : "hover:bg-gray-50"}`}>
                                         <td className="p-3 font-semibold">{day.day}</td>
                                         <td className="p-3">${day.start.toFixed(2)}</td>
                                         <td className="p-3 text-green-500 font-semibold">+${day.profit.toFixed(2)}</td>
@@ -174,7 +215,11 @@ export const Plan = ({ user, activeJournalId, showAlert }: PlanProps) => {
                                 ))}
                             </tbody>
                         </table>
-                        {planData.length === 0 && <p className="text-center p-4 text-gray-500 dark:text-gray-400">Enter valid plan details to generate your roadmap.</p>}
+                        {planData.length === 0 && (
+                            <p className={`text-center p-4 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>
+                                Enter valid plan details to generate your roadmap.
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
