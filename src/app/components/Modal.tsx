@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 interface ModalProp {
     isOpen: boolean,
-    onClose: () => void,
+    onClose: (event: React.MouseEvent<HTMLElement>) => void,
     title: string,
     children?: ReactNode,
 }

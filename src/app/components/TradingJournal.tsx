@@ -18,10 +18,11 @@ import { AccountManager } from "./AccountManager";
 interface TradingJournalProp {
     user: User,
     theme?: string,
-    setTheme: Dispatch<SetStateAction<string>>
+    setTheme: Dispatch<SetStateAction<string>>,
+    isSystemDark: boolean
 }
 
-export const TradingJournal = ({ user, theme, setTheme }: TradingJournalProp) => {
+export const TradingJournal = ({ user, theme, setTheme, isSystemDark }: TradingJournalProp) => {
     const [activeView, setActiveView] = useState('Dashboard');
     interface Journal {
         id: string;
@@ -149,8 +150,8 @@ export const TradingJournal = ({ user, theme, setTheme }: TradingJournalProp) =>
 
     return (
         <div className="flex h-screen">
-            <Sidebar activeView={activeView} setActiveView={setActiveView} user={user} handleLogout={handleLogout} theme={theme} setTheme={setTheme} />
-            <main className={`flex-1 p-4 md:p-8 overflow-y-auto ${theme === "light" ? "bg-gray-100" : "dark:bg-gray-950"}`}>
+            <Sidebar activeView={activeView} setActiveView={setActiveView} user={user} handleLogout={handleLogout} theme={theme} setTheme={setTheme} isSystemDark={isSystemDark} />
+            <main className={`flex-1 p-4 md:p-8 overflow-y-auto ${theme === "dark" ? "dark:bg-gray-950" : "bg-gray-100"}`}>
                 <div className="relative z-10">{renderView()}</div>
             </main>
             <AlertModal isOpen={alertInfo.show} onClose={() => setAlertInfo({ show: false, message: '' })} message={alertInfo.message} />

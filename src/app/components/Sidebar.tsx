@@ -10,10 +10,11 @@ interface SidebarProps {
     user: User,
     handleLogout: () => void,
     theme?: string,
-    setTheme: Dispatch<SetStateAction<string>>
+    setTheme: Dispatch<SetStateAction<string>>,
+    isSystemDark: boolean
 }
 
-export const Sidebar = ({ activeView, setActiveView, user, handleLogout, theme, setTheme }: SidebarProps) => {
+export const Sidebar = ({ activeView, setActiveView, user, handleLogout, theme, setTheme, isSystemDark }: SidebarProps) => {
 
     const navItems = [
         { name: 'Dashboard', icon: <TrendingUp className="w-5 h-5" /> },
@@ -36,7 +37,7 @@ export const Sidebar = ({ activeView, setActiveView, user, handleLogout, theme, 
     }, [theme]);
 
     return (
-        <nav className="w-64 bg-white dark:bg-gray-900 p-4 flex flex-col justify-between border-r border-gray-200 dark:border-gray-800">
+        <nav className={`w-64 p-4 flex flex-col justify-between border-r  ${theme === "dark" || isSystemDark ? "dark:bg-gray-900 dark:border-gray-800" : "bg-white border-gray-200" } `}>
             <div>
                 <div className="flex items-center mb-10">
                     <img src={user.photoURL || `https://placehold.co/40x40/374151/E5E7EB?text=${(user.displayName || 'G').charAt(0)}`} alt="User" className="w-10 h-10 rounded-full mr-3" />

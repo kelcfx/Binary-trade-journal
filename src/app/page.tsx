@@ -24,12 +24,16 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
+  const isSystemDark = theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
   if (loading) {
-    return <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-950"><div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div></div>;
+    return <div className={`flex items-center justify-center h-screen ${theme === "dark" || isSystemDark ? "dark:bg-gray-950 " : "bg-gray-100"} `}>
+      <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+    </div>;
   }
 
   return (
-    <div className={`font-inter bg-gray-50 min-h-screen ${theme === "light" ? "bg-gray-50 text-gray-900" : "dark:bg-gray-950  dark:text-gray-100"}`}>
+    <div className={`font-inter min-h-screen ${theme === "dark" || isSystemDark ? "dark:bg-gray-950  dark:text-gray-100" : "bg-gray-50 text-gray-900"}`}>
       <style>
         {`
               @import url('https://rsms.me/inter/inter.css');
@@ -40,7 +44,7 @@ export default function Home() {
             `}
       </style>
       <AlertModal isOpen={alertInfo.show} onClose={() => setAlertInfo({ show: false, message: '' })} message={alertInfo.message} />
-      {user ? <TradingJournal user={user} theme={theme} setTheme={setTheme} /> : <LoginScreen showAlert={showAlert} />}
+      {user ? <TradingJournal user={user} theme={theme} setTheme={setTheme} isSystemDark={isSystemDark} /> : <LoginScreen showAlert={showAlert} />}
     </div>
   );
 }
