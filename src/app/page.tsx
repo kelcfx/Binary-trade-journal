@@ -17,7 +17,7 @@ export default function Home() {
   const showAlert = (message : string) => setAlertInfo({ show: true, message });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
@@ -36,15 +36,16 @@ export default function Home() {
     <div className={`font-inter min-h-screen ${theme === "dark" || isSystemDark ? "dark:bg-gray-950  dark:text-gray-100" : "bg-gray-50 text-gray-900"}`}>
       <style>
         {`
-              @import url('https://rsms.me/inter/inter.css');
-              html { font-family: 'Inter', sans-serif; }
-              @supports (font-variation-settings: normal) {
-                html { font-family: 'Inter var', sans-serif; }
-              }
-            `}
+          @import url('https://rsms.me/inter/inter.css');
+          html { font-family: 'Inter', sans-serif; }
+          @supports (font-variation-settings: normal) {
+            html { font-family: 'Inter var', sans-serif; }
+          }
+          .prose { max-width: 65ch; }
+        `}
       </style>
       <AlertModal isOpen={alertInfo.show} onClose={() => setAlertInfo({ show: false, message: '' })} message={alertInfo.message} />
-      {user ? <TradingJournal user={user} theme={theme} setTheme={setTheme} isSystemDark={isSystemDark} /> : <LoginScreen showAlert={showAlert} theme={theme} isSystemDark={isSystemDark} />}
+      {user ? <TradingJournal user={user} theme={theme} setTheme={setTheme} isSystemDark={isSystemDark} showAlert={showAlert} /> : <LoginScreen showAlert={showAlert} theme={theme} isSystemDark={isSystemDark} />}
     </div>
   );
 }

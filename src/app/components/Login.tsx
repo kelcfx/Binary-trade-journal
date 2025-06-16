@@ -1,4 +1,4 @@
-import { GoogleAuthProvider, OAuthProvider, signInAnonymously, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInAnonymously, signInWithPopup } from "firebase/auth";
 import { User } from "lucide-react";
 import { auth } from "../lib/firebaseConfig";
 
@@ -13,8 +13,6 @@ export const LoginScreen = ({ showAlert, theme, isSystemDark }: LoginProp) => {
         let provider;
         if (providerName === 'google') {
             provider = new GoogleAuthProvider();
-        } else if (providerName === 'yahoo') {
-            provider = new OAuthProvider('yahoo.com');
         } else {
             return;
         }
@@ -49,10 +47,6 @@ export const LoginScreen = ({ showAlert, theme, isSystemDark }: LoginProp) => {
                     <button onClick={() => handleSignIn('google')} className={`w-full flex items-center justify-center px-8 py-3 border rounded-md shadow-sm text-sm font-medium 0  transition-colors ${theme === "dark" || isSystemDark ? "dark:text-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700" : "bg-white border-gray-300 hover:bg-gray-50 text-gray-700" } `}>
                         <svg className="w-5 h-5 mr-2" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 8.841C34.553 4.806 29.625 2.5 24 2.5C11.936 2.5 2.5 11.936 2.5 24S11.936 45.5 24 45.5c11.498 0 20.44-8.522 20.44-19.516c0-1.346-.138-2.658-.389-3.95z" /></svg>
                         Sign in with Google
-                    </button>
-                    <button onClick={() => handleSignIn('yahoo')} className={`w-full flex items-center justify-center px-8 py-3 border rounded-md shadow-sm text-sm font-medium     transition-colors ${theme === "dark" || isSystemDark ? "dark:text-gray-200 dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700" : "bg-white border-gray-300 hover:bg-gray-50 text-gray-700" }`}>
-                        <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" aria-hidden="true"><path fill="#6001d2" d="M12.152 0c-4.52 0-8.232 3.712-8.232 8.232C3.92 12.753 7.63 16.465 12.15 16.465c4.521 0 8.233-3.712 8.233-8.233C20.385 3.712 16.673 0 12.152 0zm.111 2.275c2.478 0 4.461 1.983 4.461 4.46s-1.983 4.46-4.46 4.46c-2.478 0-4.461-1.984-4.461-4.46s1.983-4.46 4.46-4.46zM12 17.513c-4.417 0-8.312 2.3-8.312 6.488h16.625c0-4.188-3.896-6.488-8.313-6.488z" /></svg>
-                        Sign in with Yahoo
                     </button>
                     <div className="relative">
                         <div className="absolute inset-0 flex items-center" aria-hidden="true">
