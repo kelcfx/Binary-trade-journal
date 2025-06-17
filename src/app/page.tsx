@@ -44,7 +44,7 @@ export default function Home() {
           .prose { max-width: 65ch; }
         `}
       </style>
-      <AlertModal isOpen={alertInfo.show} onClose={() => setAlertInfo({ show: false, message: '' })} message={alertInfo.message} />
+      <AlertModal theme={theme} isSystemDark={isSystemDark} isOpen={alertInfo.show} onClose={() => setAlertInfo({ show: false, message: '' })} message={alertInfo.message} />
       {user ? <TradingJournal user={user} theme={theme} setTheme={setTheme} isSystemDark={isSystemDark} showAlert={showAlert} /> : <LoginScreen showAlert={showAlert} theme={theme} isSystemDark={isSystemDark} />}
     </div>
   );

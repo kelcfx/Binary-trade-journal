@@ -165,7 +165,7 @@ export const AccountManager = ({ journals, activeJournalId, setActiveJournalId, 
                     </div>
                 ))}
             </div>
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingJournal ? "Edit Journal" : "Create New Journal"}>
+            <Modal theme={theme} isSystemDark={isSystemDark} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingJournal ? "Edit Journal" : "Create New Journal"}>
                 <div className="space-y-4">
                     <label className="block">
                         <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Journal Name</span>

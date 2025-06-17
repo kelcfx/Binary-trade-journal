@@ -40,7 +40,7 @@ export const WeekStatsModal = ({ stats, onClose, theme, isSystemDark }: WeekStat
     const winRate = tradeCount > 0 ? (wins / tradeCount) * 100 : 0;
 
     return (
-        <Modal isOpen={true} onClose={onClose} title={`Stats for Week of ${new Date(startDate + 'T00:00:00').toLocaleDateString()}`}>
+        <Modal theme={theme} isSystemDark={isSystemDark} isOpen={true} onClose={onClose} title={`Stats for Week of ${new Date(startDate + 'T00:00:00').toLocaleDateString()}`}>
             <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-center">
                     <div className={`p-4 rounded-lg ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-100"}`}>

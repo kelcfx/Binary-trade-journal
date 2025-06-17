@@ -199,7 +199,7 @@ export const Transactions = ({ user, db, activeJournalId, activeJournalData, sho
                 )}
             </div>
             {editingTransaction && (
-                <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Transaction">
+                <Modal theme={theme} isSystemDark={isSystemDark} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Transaction">
                     <EditTransactionForm transaction={editingTransaction} onSave={handleSaveEdit} />
                 </Modal>
             )}

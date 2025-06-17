@@ -1,8 +1,8 @@
 'use client';
 
-import { doc, collection, onSnapshot, query, writeBatch, orderBy, Firestore } from 'firebase/firestore';
+import { doc, collection, writeBatch, Firestore } from 'firebase/firestore';
 import { PlusCircle, Edit, Download, Sparkles } from 'lucide-react';
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { downloadCSV } from "../utils/downloadCSV";
 import { Modal } from "./Modal";
 import { appId } from '../lib/firebaseConfig';
@@ -29,7 +29,8 @@ interface TradeLogsProps {
     activeJournalId: string | null,
     showAlert: (message: string) => void;
     theme?: string,
-    isSystemDark: boolean
+    isSystemDark: boolean,
+    trades: Trade[],
 }
 
 interface Trade {
@@ -37,7 +38,7 @@ interface Trade {
     asset?: string;
     direction?: string;
     date?: import("firebase/firestore").Timestamp | Date | string;
-    time?: string;
+    time?: import("firebase/firestore").Timestamp | Date | string;
     totalTrades?: number;
     losingTrades?: number;
     investmentPerTrade?: number;
@@ -49,28 +50,19 @@ interface Trade {
     [key: string]: unknown;
 }
 
-export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAlert, theme, isSystemDark }: TradeLogsProps) => {
-    const [trades, setTrades] = useState<Trade[]>([]);
+export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAlert, theme, isSystemDark, trades }: TradeLogsProps) => {
+    // const [trades, setTrades] = useState<Trade[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
     const [isManualProfit, setIsManualProfit] = useState(false);
     const [newTrade, setNewTrade] = useState({
+        id: '',
         asset: '', direction: 'Buy', date: '', time: '',
-        totalTrades: '', losingTrades: '', investmentPerTrade: '', roi: '', sessionProfit: ''
+        totalTrades: undefined, losingTrades: undefined, investmentPerTrade: undefined, roi: undefined, sessionProfit: undefined
     });
     const [aiAnalysis, setAiAnalysis] = useState('');
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
     const [isAiLoading, setIsAiLoading] = useState(false);
-
-
-    useEffect(() => {
-        if (!activeJournalId || !appId) return;
-        const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId, 'trades'), orderBy("date", "desc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setTrades(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return () => unsubscribe();
-    }, [user.uid, db, activeJournalId]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -84,14 +76,19 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
     const processAndSaveTrade = async (tradeData: Trade) => {
         const { id, ...data } = tradeData;
         let sessionProfit;
-        let finalTradeData = { ...data, date: new Date(`${data.date}T${data.time}`) };
+        let finalTradeData = {
+            ...data,
+            date: new Date(`${data.date}T${data.time}`),
+            totalTrades: 0,
+            losingTrades: 0,
+            winningTrades: 0,
+            investmentPerTrade: 0,
+            roi: 0,
+        };
 
         if (isManualProfit) {
             const parsedProfit = parseFloat(String(data.sessionProfit));
-            if (isNaN(parsedProfit)) {
-                showAlert('Please enter a valid session profit amount.');
-                return;
-            }
+            if (isNaN(parsedProfit)) { showAlert('Please enter a valid session profit amount.'); return; }
             sessionProfit = parseFloat(parsedProfit.toFixed(2));
             finalTradeData = { ...finalTradeData, sessionProfit, sessionOutcome: sessionProfit >= 0 ? 'Win' : 'Loss' };
         } else {
@@ -111,17 +108,18 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
         }
 
         const batch = writeBatch(db);
-        if (!activeJournalId || !appId) return;
+        if (!appId || !activeJournalId) return;
         const journalRef = doc(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId);
 
         if (id) {
             const oldTrade = trades.find(t => t.id === id);
-            const profitDifference = sessionProfit - (oldTrade?.sessionProfit || 0);
-            const tradeRef = doc(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId, 'trades', id);
+            const previousSessionProfit = oldTrade && typeof oldTrade.sessionProfit === 'number' ? oldTrade.sessionProfit : 0;
+            const profitDifference = sessionProfit - previousSessionProfit;
+            const tradeRef = doc(journalRef, 'trades', id);
             batch.update(tradeRef, finalTradeData);
             batch.update(journalRef, { balance: activeJournalData.balance + profitDifference });
         } else {
-            const newTradeRef = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId, 'trades'));
+            const newTradeRef = doc(collection(journalRef, 'trades'));
             batch.set(newTradeRef, finalTradeData);
             batch.update(journalRef, { balance: activeJournalData.balance + sessionProfit });
         }
@@ -139,19 +137,12 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                     : new Date(typeof trade.date === 'string' ? trade.date : '')))
             : new Date();
         setIsManualProfit(trade.sessionProfit !== undefined && trade.totalTrades === undefined);
-        setEditingTrade({
-            ...trade,
-            date: tradeDate.toISOString().split('T')[0],
-            time: tradeDate.toTimeString().slice(0, 5),
-        });
+        setEditingTrade({ ...trade, date: tradeDate.toLocaleDateString('en-CA'), time: tradeDate.toTimeString().slice(0, 5) });
         setIsModalOpen(true);
     };
-
     const handleOpenNewModal = () => {
-        setNewTrade({
-            asset: '', direction: 'Buy', date: '', time: '',
-            totalTrades: '', losingTrades: '', investmentPerTrade: '', roi: '', sessionProfit: ''
-        });
+        const now = new Date();
+        setNewTrade({ id: '', asset: '', direction: 'Buy', date: now.toLocaleDateString('en-CA'), time: now.toTimeString().slice(0, 5), totalTrades: undefined, losingTrades: undefined, investmentPerTrade: undefined, roi: undefined, sessionProfit: undefined });
         setEditingTrade(null);
         setIsManualProfit(false);
         setIsModalOpen(true);
@@ -160,22 +151,6 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
     const constructPrompt = (trade: Trade): string => {
         return `Analyze this binary options trade session and provide insights. The session outcome was a ${trade.sessionOutcome} with a profit/loss of $${(trade.sessionProfit ?? 0).toFixed(2)}. The asset was ${trade.asset}. The direction was ${trade.direction}. Number of trades: ${trade.totalTrades || 'N/A'}, Losing trades: ${trade.losingTrades || 'N/A'}. My notes: "${trade.notes || 'None'}". What could I have done better, what did I do well, and what should I look out for next time? Provide the response in clear, concise sections with bullet points.`;
     };
-
-    // interface AiResponsePart {
-    //     text: string;
-    // }
-
-    // interface AiResponseContent {
-    //     parts: AiResponsePart[];
-    // }
-
-    // interface AiResponseCandidate {
-    //     content: AiResponseContent;
-    // }
-
-    // interface AiResponse {
-    //     candidates?: AiResponseCandidate[];
-    // }
 
     const getAiAnalysis = async (trade: Trade) => {
         setIsAiLoading(true);
@@ -212,7 +187,8 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                         onClick={handleOpenNewModal}
                         className="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
                     >
-                        <PlusCircle className="mr-2 h-5 w-5" /> Add Session
+                        <PlusCircle className="mr-2 h-5 w-5" />
+                        <span className="hidden sm:inline">Add Session</span>
                     </button>
                     <button
                         onClick={() =>
@@ -229,11 +205,12 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                         }
                         className="flex items-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow"
                     >
-                        <Download className="mr-2 h-5 w-5" /> Export
+                        <Download className="mr-2 h-5 w-5" />
+                        <span className="hidden sm:inline">Export</span>
                     </button>
                 </div>
             </div>
-            <div className={`bg-white p-4 rounded-xl shadow-lg border overflow-x-auto ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "border-gray-200"}`}>
+            <div className={`p-4 rounded-xl shadow-lg border overflow-x-auto ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "border-gray-200 bg-white"}`}>
                 <table className="w-full text-left min-w-[1000px]">
                     <thead className={`text-xs uppercase ${theme === "dark" || isSystemDark ? "text-gray-400 dark:bg-gray-700" : "text-gray-500 bg-gray-50"}`}>
                         <tr>
@@ -279,24 +256,13 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                 </table>
                 {trades.length === 0 && <p className={`text-center p-4 ${theme === "dark" || isSystemDark ? "text-gray-400" : "text-gray-500"}`}>No trading sessions logged yet.</p>}
             </div>
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTrade ? "Edit Trading Session" : "Log New Trading Session"}>
+            <Modal theme={theme} isSystemDark={isSystemDark} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTrade ? "Edit Trading Session" : "Log New Trading Session"}>
                 <TradeForm
                     tradeData={
                         editingTrade
-                            ? {
-                                ...editingTrade,
-                                asset: editingTrade.asset ?? '',
-                                direction: editingTrade.direction ?? 'Buy',
-                                date: editingTrade.date ?? '',
-                                time: editingTrade.time ?? '',
-                                totalTrades: editingTrade.totalTrades ?? '',
-                                losingTrades: editingTrade.losingTrades ?? '',
-                                investmentPerTrade: editingTrade.investmentPerTrade ?? '',
-                                roi: editingTrade.roi ?? '',
-                                sessionProfit: editingTrade.sessionProfit ?? '',
-                            }
+                            ? { ...editingTrade, time: editingTrade.time ?? '' }
                             : newTrade
-                    }
+                    } 
                     onInputChange={handleInputChange}
                     onSubmit={(e: React.FormEvent) => {
                         e.preventDefault();
@@ -305,11 +271,11 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                             {
                                 ...newTrade,
                                 id: '',
-                                totalTrades: newTrade.totalTrades === '' ? undefined : Number(newTrade.totalTrades),
-                                losingTrades: newTrade.losingTrades === '' ? undefined : Number(newTrade.losingTrades),
-                                investmentPerTrade: newTrade.investmentPerTrade === '' ? undefined : Number(newTrade.investmentPerTrade),
-                                roi: newTrade.roi === '' ? undefined : Number(newTrade.roi),
-                                sessionProfit: newTrade.sessionProfit === '' ? undefined : Number(newTrade.sessionProfit),
+                                totalTrades: typeof newTrade.totalTrades === 'string' ? (newTrade.totalTrades === '' ? undefined : Number(newTrade.totalTrades)) : newTrade.totalTrades,
+                                losingTrades: typeof newTrade.losingTrades === 'string' ? (newTrade.losingTrades === '' ? undefined : Number(newTrade.losingTrades)) : newTrade.losingTrades,
+                                investmentPerTrade: typeof newTrade.investmentPerTrade === 'string' ? (newTrade.investmentPerTrade === '' ? undefined : Number(newTrade.investmentPerTrade)) : newTrade.investmentPerTrade,
+                                roi: typeof newTrade.roi === 'string' ? (newTrade.roi === '' ? undefined : Number(newTrade.roi)) : newTrade.roi,
+                                sessionProfit: typeof newTrade.sessionProfit === 'string' ? (newTrade.sessionProfit === '' ? undefined : Number(newTrade.sessionProfit)) : newTrade.sessionProfit,
                             }
                         );
                     }}
@@ -319,7 +285,7 @@ export const TradeLogs = ({ user, db, activeJournalId, activeJournalData, showAl
                     isSystemDark={isSystemDark}
                 />
             </Modal>
-            <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="AI Trade Analysis">
+            <Modal theme={theme} isSystemDark={isSystemDark} isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="AI Trade Analysis">
                 {isAiLoading ? (
                     <div className="flex flex-col items-center justify-center h-48">
                         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-500"></div>

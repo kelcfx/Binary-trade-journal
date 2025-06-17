@@ -39,6 +39,7 @@ interface Trade {
     asset?: string;
     direction?: string;
     date?: import("firebase/firestore").Timestamp | Date | string;
+    time?: import("firebase/firestore").Timestamp | Date | string;
     sessionProfit?: number;
     sessionOutcome?: string;
     totalTrades?: number;
@@ -51,6 +52,12 @@ interface Trade {
 
 interface Goal {
     id: string;
+    type: string;
+    target: number;
+    achieved: number;
+    status: string;
+    startDate: import("firebase/firestore").Timestamp | Date | null;
+    endDate: import("firebase/firestore").Timestamp | Date | null;
     [key: string]: unknown;
 }
 
@@ -170,7 +177,19 @@ export const TradingJournal = ({ user, theme, setTheme, isSystemDark, showAlert 
                 setTrades(tradeData);
             }),
             onSnapshot(doc(journalRef, 'goals', 'activeGoal'), (docSnap) => {
-                setActiveGoal(docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null);
+                setActiveGoal(docSnap.exists() ? (() => {
+                    const data = docSnap.data();
+                    return {
+                        id: docSnap.id,
+                        type: typeof data.type === "string" ? data.type : "",
+                        target: typeof data.target === "number" ? data.target : 0,
+                        achieved: typeof data.achieved === "number" ? data.achieved : 0,
+                        status: typeof data.status === "string" ? data.status : "",
+                        startDate: data.startDate ?? null,
+                        endDate: data.endDate ?? null,
+                        ...data
+                    } as Goal;
+                })() : null);
             })
         ];
         setTimeout(() => setLoading(false), 500); // Give a moment for all listeners to attach
