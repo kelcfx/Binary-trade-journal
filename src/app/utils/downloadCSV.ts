@@ -3,35 +3,32 @@ export const downloadCSV = (data: Array<Record<string, unknown>>, filename = "ex
     const headers = Object.keys(data[0]);
     const csvRows = [
       headers.join(","),
-      ...data.map((row) =>
-        headers
-          .map((header) => {
+      ...data.map(row =>
+        headers.map(header => {
             let value = row[header];
             if (value === null || value === undefined) {
-              value = "";
+                value = '';
             }
-            // Round numbers to 2 decimal places for export
-            if (typeof value === "number") {
-              return value.toFixed(2);
+            if (typeof value === 'number') {
+                return value.toFixed(2);
             }
-            if (typeof value === "string" && value.includes(",")) {
-              return `"${value.replace(/"/g, '""')}"`;
+            if (typeof value === 'string' && value.includes(',')) {
+                return `"${value.replace(/"/g, '""')}"`;
             }
             if (value instanceof Date) {
-              return value.toISOString();
+                return value.toISOString();
             }
             if (
-              typeof value === "object" &&
-              value !== null &&
-              "seconds" in value &&
-              typeof (value as { seconds: unknown }).seconds === "number"
+                typeof value === 'object' &&
+                value !== null &&
+                'seconds' in value &&
+                typeof (value as { seconds: number }).seconds === 'number'
             ) {
-              return new Date((value as { seconds: number }).seconds * 1000).toISOString();
+                return new Date((value as { seconds: number }).seconds * 1000).toISOString();
             }
             return value;
-          })
-          .join(",")
-      ),
+        }).join(',')
+    )
     ];
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);

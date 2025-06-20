@@ -1,13 +1,14 @@
 'use client';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import { appId } from "../lib/firebaseConfig";
 import { Area, AreaChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Modal } from "./Modal";
+import { Modal } from "./PopupModal/Modal";
 import React from "react";
 import { User } from "firebase/auth";
 import { Firestore } from "firebase/firestore";
-import { Clock } from "./Clock";
+import { AnalogClock } from "./AnalogClock";
+import { PlusCircle } from "lucide-react";
 
 interface Journal {
     id: string;
@@ -52,14 +53,13 @@ interface DashboardProps {
     db: Firestore,
     activeJournalId: string | null,
     showAlert: (message: string) => void,
-    theme?: string,
-    isSystemDark: boolean,
     trades: Trade[],
-    activeGoal: Goal | null, 
+    activeGoal: Goal | null,
     setActiveView: Dispatch<SetStateAction<string>>,
+    onLogSessionClick: () => void,
 }
 
-export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme, isSystemDark, trades, activeGoal, setActiveView }: DashboardProps) => {
+export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades, activeGoal, setActiveView, onLogSessionClick }: DashboardProps) => {
     const [isManageBalanceModalOpen, setIsManageBalanceModalOpen] = useState(false);
     const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
@@ -80,7 +80,7 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
         const newBalance = type === 'deposit' ? activeJournalData.balance + amount : activeJournalData.balance - amount;
         if (newBalance < 0) return;
 
-        if (!activeJournalId || !appId) return;
+        if (!appId || !activeJournalId) return;
         const journalDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId);
         await updateDoc(journalDocRef, { balance: newBalance });
         await addDoc(collection(journalDocRef, 'transactions'), { type, amount, timestamp: serverTimestamp(), newBalance });
@@ -92,8 +92,8 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
         if (!activeJournalId || !appId) return;
         const journalDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId);
         await updateDoc(journalDocRef, {
-            dailyProfitTarget: parseFloat(String(newGoals.daily)) || 0,
-            weeklyProfitGoal: parseFloat(String(newGoals.weekly)) || 0,
+            dailyProfitTarget: parseFloat(String(newGoals.daily)) || 0.01,
+            weeklyProfitGoal: parseFloat(String(newGoals.weekly)) || 0.01,
         });
         setIsGoalModalOpen(false);
     };
@@ -106,27 +106,29 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
     }
 
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    // Type guard for objects with a toDate method
-    function hasToDate(obj: unknown): obj is { toDate: () => Date } {
-        return typeof obj === 'object' && obj !== null && typeof (obj as { toDate?: unknown }).toDate === 'function';
+
+    interface ToDateLike {
+        toDate: () => Date;
     }
 
-    const getDateAsDate = (date: string | Date | { toDate: () => Date } | undefined): Date | null => {
+    const getDateObj = useCallback((date: string | Date | ToDateLike | null | undefined) => {
         if (!date) return null;
         if (typeof date === 'string') return new Date(date);
         if (date instanceof Date) return date;
-        if (hasToDate(date)) return date.toDate();
+        if (typeof date === 'object' && date !== null && typeof (date as ToDateLike).toDate === 'function') {
+            return (date as ToDateLike).toDate();
+        }
         return null;
-    };
+    }, []);
 
     const todaysTrades = trades.filter(t => {
-        const tradeDate = getDateAsDate(t.date);
+        const tradeDate = getDateObj(t.date as string | Date | ToDateLike | null | undefined);
         return tradeDate && tradeDate >= today;
     });
     const todaysProfit = todaysTrades.reduce((s, t) => s + (t.sessionProfit || 0), 0);
     const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1));
     const weeklyProfit = trades.filter(t => {
-        const tradeDate = getDateAsDate(t.date);
+        const tradeDate = getDateObj(t.date as string | Date | ToDateLike | null | undefined);
         return tradeDate && tradeDate >= startOfWeek;
     }).reduce((s, t) => s + (t.sessionProfit || 0), 0);
 
@@ -158,20 +160,12 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
 
     const mainGoalProgress = useMemo(() => {
         if (!activeGoal || !trades || !activeGoal.startDate) return null;
-        const startDate = (typeof activeGoal.startDate === 'object' && 'toDate' in activeGoal.startDate && typeof activeGoal.startDate.toDate === 'function')
-            ? activeGoal.startDate.toDate()
-            : activeGoal.startDate instanceof Date
-                ? activeGoal.startDate
-                : null;
-        if (!startDate) return null;
+        const startDate = typeof activeGoal.startDate === 'object' && typeof (activeGoal.startDate as ToDateLike).toDate === 'function'
+            ? (activeGoal.startDate as ToDateLike).toDate()
+            : activeGoal.startDate;
         const relevantTrades = trades.filter(t => {
-            if (!t.date) return false;
-            const tradeDate = typeof t.date === 'object' && 'toDate' in t.date && typeof t.date.toDate === 'function'
-                ? t.date.toDate()
-                : t.date instanceof Date
-                    ? t.date
-                    : null;
-            return tradeDate !== null && tradeDate >= startDate;
+            const tradeDate = getDateObj(t.date as string | Date | ToDateLike | null | undefined);
+            return tradeDate && tradeDate >= startDate;
         });
         const achieved = relevantTrades.reduce((sum, t) => sum + (t.sessionProfit || 0), 0);
         return {
@@ -179,7 +173,7 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
             target: activeGoal.target,
             percentage: Math.max(0, (achieved / activeGoal.target) * 100)
         };
-    }, [activeGoal, trades]);
+    }, [activeGoal, trades, getDateObj]);
 
     const getGreeting = () => {
         const hour = new Date().getHours();
@@ -190,28 +184,33 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className={`text-3xl md:text-4xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>{getGreeting()}, {user.displayName || 'Trader'}!</h1>
-                <p className={`text-md md:text-lg ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Welcome to your {activeJournalData.name}.</p>
+            <div className="flex flex-wrap gap-4 justify-between items-start">
+                <div>
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">{getGreeting()}, {user.displayName || 'Trader'}!</h1>
+                    <p className="text-md md:text-lg text-gray-500 dark:text-gray-400">Welcome to your {activeJournalData.name}.</p>
+                </div>
+                <button onClick={onLogSessionClick} className="flex-shrink-0 flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    <span>Log Session</span>
+                </button>
             </div>
 
-            <div className={`p-4 rounded-2xl shadow-lg border   ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "border-gray-200 bg-white"}`}>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Clock label="Onitsha" timezone="Africa/Lagos" theme={theme} isSystemDark={isSystemDark} />
-                    <Clock label="London" timezone="Europe/London" theme={theme} isSystemDark={isSystemDark} />
-                    <Clock label="New York" timezone="America/New_York" theme={theme} isSystemDark={isSystemDark} />
-                    <Clock label="Tokyo" timezone="Asia/Tokyo" theme={theme} isSystemDark={isSystemDark}/>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <AnalogClock label="London" timezone="Europe/London" />
+                    <AnalogClock label="New York" timezone="America/New_York" />
+                    <AnalogClock label="Tokyo" timezone="Asia/Tokyo" />
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div
-                    className={`lg:col-span-2 rounded-2xl shadow-lg border flex flex-col cursor-pointer transition-transform transform hover:scale-[1.02] ${theme === "dark" || isSystemDark ? " dark:bg-gray-800 dark:border-gray-700" : "border-gray-200 bg-white"}`}
+                    className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col cursor-pointer transition-transform transform hover:scale-[1.02]"
                     onClick={() => setIsManageBalanceModalOpen(true)}
                 >
                     <div className="flex flex-col items-center justify-center flex-grow p-6">
-                        <h3 className={`text-md font-semibold mb-1 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Trading Balance</h3>
-                        <p className={`text-4xl md:text-5xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800"}`}>${activeJournalData.balance.toFixed(2)}</p>
+                        <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-1">Trading Balance</h3>
+                        <p className="text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100">${activeJournalData.balance.toFixed(2)}</p>
                     </div>
                     <div className="h-32 -mx-1 -mb-1">
                         <ResponsiveContainer width="100%" height="100%">
@@ -233,34 +232,34 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
                 </div>
 
                 <div className="space-y-6">
-                    <div className={`p-6 rounded-2xl shadow-lg border cursor-pointer transition-transform transform hover:scale-105 ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"}`} onClick={() => setIsGoalModalOpen(true)}>
-                        <h3 className={`text-md font-semibold   mb-2 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Profit Targets</h3>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer transition-transform transform hover:scale-105" onClick={() => setIsGoalModalOpen(true)}>
+                        <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-2">Profit Targets</h3>
                         <div className="space-y-3">
                             <div>
                                 <div className="flex justify-between items-center text-sm mb-1">
-                                    <span className={`font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Daily</span>
-                                    <span className={`font-bold ${todaysProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${todaysProfit.toFixed(2)} / ${activeJournalData.dailyProfitTarget.toFixed(2)}</span>
+                                    <span className="font-medium text-gray-600 dark:text-gray-300">Daily</span>
+                                    <span className={`font-bold break-all ${todaysProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${todaysProfit.toFixed(2)} / ${activeJournalData.dailyProfitTarget.toFixed(2)}</span>
                                 </div>
-                                <div className={`w-full rounded-full h-2.5 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-200"}`}>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                                     <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, (todaysProfit / (activeJournalData.dailyProfitTarget || 1)) * 100)}%` }}></div>
                                 </div>
                             </div>
                             <div>
                                 <div className="flex justify-between items-center text-sm mb-1">
-                                    <span className={`font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Weekly</span>
-                                    <span className={`font-bold ${weeklyProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${weeklyProfit.toFixed(2)} / ${activeJournalData.weeklyProfitGoal.toFixed(2)}</span>
+                                    <span className="font-medium text-gray-600 dark:text-gray-300">Weekly</span>
+                                    <span className={`font-bold break-all ${weeklyProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>${weeklyProfit.toFixed(2)} / ${activeJournalData.weeklyProfitGoal.toFixed(2)}</span>
                                 </div>
-                                <div className={`w-full rounded-full h-2.5 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-200"}`}>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                                     <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, (weeklyProfit / (activeJournalData.weeklyProfitGoal || 1)) * 100)}%` }}></div>
                                 </div>
                             </div>
                             {mainGoalProgress && (
                                 <div onClick={(e) => { e.stopPropagation(); setActiveView('Goals') }}>
                                     <div className="flex justify-between items-center text-sm mb-1 mt-3">
-                                        <span className={`font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Main Goal</span>
+                                        <span className="font-medium text-gray-600 dark:text-gray-300">Main Goal</span>
                                         <span className={`font-bold break-all ${mainGoalProgress.achieved >= 0 ? 'text-purple-500' : 'text-red-500'}`}>${mainGoalProgress.achieved.toFixed(2)} / ${mainGoalProgress.target.toFixed(2)}</span>
                                     </div>
-                                    <div className={`w-full rounded-full h-2.5 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700" : "bg-gray-200"}`}>
+                                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
                                         <div className="bg-purple-500 h-2.5 rounded-full" style={{ width: `${Math.min(100, mainGoalProgress.percentage)}%` }}></div>
                                     </div>
                                 </div>
@@ -268,48 +267,26 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, theme,
                         </div>
                     </div>
 
-                    <button onClick={() => setIsRiskModalOpen(true)} className={`w-full p-6 rounded-2xl shadow-lg border flex flex-col items-center justify-center text-center cursor-pointer transition-transform transform hover:scale-105 ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700 " : "bg-white border-gray-200 "}`}>
-                        <h3 className={`text-md font-semibold mb-1 ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>Risk Management</h3>
+                    <button onClick={() => setIsRiskModalOpen(true)} className="w-full bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-center cursor-pointer transition-transform transform hover:scale-105">
+                        <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-1">Risk Management</h3>
                         <div className="flex items-baseline space-x-2">
                             <span className="text-2xl font-bold text-red-500">{activeJournalData.riskPercentage}%</span>
-                            <span className={`text-lg font-medium ${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-700"}`}>(${((activeJournalData.balance * activeJournalData.riskPercentage) / 100).toFixed(2)})</span>
+                            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">(${((activeJournalData.balance * activeJournalData.riskPercentage) / 100).toFixed(2)})</span>
                         </div>
                     </button>
                 </div>
             </div>
 
-            <Modal theme={theme} isSystemDark={isSystemDark} isOpen={isManageBalanceModalOpen} onClose={() => setIsManageBalanceModalOpen(false)} title="Manage Balance">
-                <div className="space-y-4">
-                    <p className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Enter amount to deposit or withdraw.</p>
-                    <input type="number" value={transactionAmount} onChange={(e) => setTransactionAmount(e.target.value)} placeholder="Amount" className={`w-full p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:text-gray-200 dark:bg-gray-700" : "text-gray-800 bg-gray-100"}`} />
-                    <div className="flex space-x-4">
-                        <button onClick={() => handleTransaction('deposit')} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg">Deposit</button>
-                        <button onClick={() => handleTransaction('withdraw')} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg">Withdraw</button>
-                    </div>
-                </div>
-            </Modal>
-            <Modal theme={theme} isSystemDark={isSystemDark} isOpen={isGoalModalOpen} onClose={() => setIsGoalModalOpen(false)} title="Update Profit Targets">
+            <Modal isOpen={isManageBalanceModalOpen} onClose={() => setIsManageBalanceModalOpen(false)} title="Manage Balance"><div className="space-y-4"><p className="text-gray-600 dark:text-gray-300">Enter amount to deposit or withdraw.</p><input type="number" value={transactionAmount} onChange={(e) => setTransactionAmount(e.target.value)} placeholder="Amount" className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><div className="flex space-x-4"><button onClick={() => handleTransaction('deposit')} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg">Deposit</button><button onClick={() => handleTransaction('withdraw')} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg">Withdraw</button></div></div></Modal>
+            <Modal isOpen={isGoalModalOpen} onClose={() => setIsGoalModalOpen(false)} title="Update Profit Targets"><div className="space-y-4"><label className="block"><span className="text-gray-600 dark:text-gray-300">Daily Profit Target ($)</span><input type="number" value={newGoals.daily} onChange={(e) => setNewGoals({ ...newGoals, daily: parseFloat(e.target.value) || 0 })} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" /></label><label className="block"><span className="text-gray-600 dark:text-gray-300">Weekly Profit Goal ($)</span><input type="number" value={newGoals.weekly} onChange={(e) => setNewGoals({ ...newGoals, weekly: parseFloat(e.target.value) || 0 })} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" /></label><button onClick={handleGoalUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Save Goals</button></div></Modal>
+
+            <Modal isOpen={isRiskModalOpen} onClose={() => setIsRiskModalOpen(false)} title="Adjust Risk">
                 <div className="space-y-4">
                     <label className="block">
-                        <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Daily Profit Target ($)</span>
-                        <input type="number" value={newGoals.daily} onChange={(e) => setNewGoals({ ...newGoals, daily: Number(e.target.value) })} className={`w-full p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700 dark:text-gray-200" : "bg-gray-100 text-gray-800"}`} />
+                        <span className="text-gray-600 dark:text-gray-300">Risk Percentage per Trade (%)</span>
+                        <input type="number" value={newRisk} onChange={(e) => setNewRisk(parseFloat(e.target.value) || 0)} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     </label>
-                    <label className="block">
-                        <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Weekly Profit Goal ($)</span>
-                        <input type="number" value={newGoals.weekly} onChange={(e) => setNewGoals({ ...newGoals, weekly: Number(e.target.value) })} className={`w-full p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700 dark:text-gray-200" : "bg-gray-100 text-gray-800"} `} />
-                    </label>
-                    <button onClick={handleGoalUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Save Goals</button>
-                </div>
-            </Modal>
-            <Modal theme={theme} isSystemDark={isSystemDark} isOpen={isRiskModalOpen} onClose={() => setIsRiskModalOpen(false)} title="Adjust Risk">
-                <div className="space-y-4">
-                    <label className="block">
-                        <span className={`${theme === "dark" || isSystemDark ? "dark:text-gray-300" : "text-gray-600"}`}>Risk Percentage per Trade (%)</span>
-                        <input type="number" value={newRisk} onChange={(e) => setNewRisk(Number(e.target.value))} className={`w-full p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === "dark" || isSystemDark ? "dark:bg-gray-700 dark:text-gray-200" : "bg-gray-100 text-gray-800"}`} />
-                    </label>
-                    <p className={`text-sm text-center ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>
-                        This will risk <span className="font-bold">${((activeJournalData.balance * newRisk) / 100).toFixed(2)}</span> of your current balance per trade.
-                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">This will risk <span className="font-bold">${((activeJournalData.balance * newRisk) / 100).toFixed(2)}</span> of your current balance per trade.</p>
                     <button onClick={handleRiskUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Set Risk</button>
                 </div>
             </Modal>

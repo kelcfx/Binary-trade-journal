@@ -1,17 +1,11 @@
 'use client';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-
-import { useEffect, useMemo, useState } from "react";
-import { appId } from '../lib/firebaseConfig';
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DayStatsModal } from './dateModal/DayStatsModal';
 import { WeekStatsModal } from './dateModal/WeekStatsModal';
 
-import { User } from "firebase/auth";
-import { Firestore } from "firebase/firestore";
-import { useTheme } from 'next-themes';
-
-interface Trade {
+// Import the types from the modal components to ensure compatibility
+type ModalTrade = {
     id: string;
     date?: import("firebase/firestore").Timestamp;
     sessionProfit?: number;
@@ -19,40 +13,21 @@ interface Trade {
     sessionOutcome?: 'Win' | 'Loss' | string;
     winningTrades?: number;
     losingTrades?: number;
+    asset?: string;
+    direction?: string;
     [key: string]: unknown;
-}
+};
 
-
-interface Journal {
-    id: string;
-    name: string;
-    createdAt: import("firebase/firestore").Timestamp | null; // Use Firebase Timestamp or null if not set
-    balance: number;
-    dailyProfitTarget: number;
-    weeklyProfitGoal: number;
-    riskPercentage: number;
-    [key: string]: unknown; // For any additional fields
-}
-
-interface CalendarProps {
-    user: User,
-    activeJournalData: Journal,
-    db: Firestore,
-    activeJournalId: string | null,
-    showAlert: (message: string) => void;
-}
-
-interface DayStats {
+type ModalDayStats = {
     date: string;
     totalProfit: number;
     tradeCount: number;
     wins: number;
     losses: number;
-    trades: Trade[];
-}
+    trades: ModalTrade[];
+};
 
-
-interface WeekStats {
+type ModalWeekStats = {
     totalProfit: number;
     tradeCount: number;
     wins: number;
@@ -63,52 +38,91 @@ interface WeekStats {
         tradeCount: number;
         wins: number;
         losses: number;
-        trades: Trade[];
+        trades: ModalTrade[];
     }>;
     startDate: string;
     endDate: string;
+};
+import { Timestamp } from "firebase/firestore";
+
+interface Trade {
+    id: string;
+    asset?: string;
+    direction?: string;
+    date?: import("firebase/firestore").Timestamp | Date | string;
+    time?: import("firebase/firestore").Timestamp | Date | string;
+    totalTrades?: number;
+    losingTrades?: number;
+    investmentPerTrade?: number;
+    roi?: number;
+    sessionProfit?: number;
+    winningTrades?: number;
+    sessionOutcome?: string;
+    notes?: string;
+    [key: string]: unknown;
 }
 
-export const CalendarView = ({ user, db, activeJournalId }: CalendarProps) => {
+interface CalendarProps {
+    trades: Trade[],
+}
+
+export const CalendarView = ({ trades }: CalendarProps) => {
     const [currentDate, setCurrentDate] = useState(new Date());
-    // const [trades, setTrades] = useState<Array<{ id: string; [key: string]: any }>>([]);
-    const [selectedDayStats, setSelectedDayStats] = useState<DayStats | null>(null);
-    const [selectedWeekStats, setSelectedWeekStats] = useState<WeekStats | null>(null);
-    const [trades, setTrades] = useState<Trade[]>([]);
-    const { theme } = useTheme();
+    const [selectedDayStats, setSelectedDayStats] = useState<ModalDayStats | null>(null);
+    const [selectedWeekStats, setSelectedWeekStats] = useState<ModalWeekStats | null>(null);
 
-    const isSystemDark = theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Helper function to convert Trade to ModalTrade
+    const convertToModalTrade = (trade: Trade): ModalTrade => {
+        // Convert date to Timestamp if it's not already
+        let convertedDate: import("firebase/firestore").Timestamp | undefined;
+        if (trade.date) {
+            if (typeof trade.date === 'object' && 'toDate' in trade.date) {
+                convertedDate = trade.date as import("firebase/firestore").Timestamp;
+            } else {
+                // For string or Date, we'll leave it undefined since modal expects Timestamp
+                convertedDate = undefined;
+            }
+        }
 
-    useEffect(() => {
-        if (!activeJournalId || !appId) return;
-        const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId, 'trades'), orderBy("date", "asc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const tradesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setTrades(tradesData);
-        }, (error) => console.error("Error fetching trades for calendar: ", error));
-        return () => unsubscribe();
-    }, [user.uid, db, activeJournalId]);
+        return {
+            id: trade.id,
+            date: convertedDate,
+            sessionProfit: trade.sessionProfit,
+            totalTrades: trade.totalTrades,
+            sessionOutcome: trade.sessionOutcome,
+            winningTrades: trade.winningTrades,
+            losingTrades: trade.losingTrades,
+            asset: trade.asset,
+            direction: trade.direction,
+        };
+    };
+
+    // Helper function to convert different date types to Date object
+    const getDateObj = (date: string | Timestamp | Date | undefined): Date | null => {
+        if (!date) return null;
+        if (typeof date === 'string') return new Date(date);
+        if (date instanceof Date) return date;
+        if (typeof date === 'object' && date !== null && 'toDate' in date && typeof date.toDate === 'function') {
+            return date.toDate();
+        }
+        return null;
+    };
 
     const dailyStats = useMemo(() => {
-        const stats: {
-            [dateStr: string]: {
-                totalProfit: number;
-                tradeCount: number;
-                wins: number;
-                losses: number;
-                trades: Trade[];
-            };
-        } = {};
+        const stats: Record<string, { totalProfit: number; tradeCount: number; wins: number; losses: number; trades: Trade[] }> = {};
         trades.forEach(trade => {
             if (trade.date) {
-                const dateStr = trade.date.toDate().toISOString().split('T')[0];
-                if (!stats[dateStr]) stats[dateStr] = { totalProfit: 0, tradeCount: 0, wins: 0, losses: 0, trades: [] };
-                stats[dateStr].totalProfit += trade.sessionProfit || 0;
-                const sessionTrades = trade.totalTrades || 1;
-                stats[dateStr].tradeCount += sessionTrades;
-                stats[dateStr].wins += trade.sessionOutcome === 'Win' ? (trade.winningTrades || 1) : 0;
-                stats[dateStr].losses += trade.sessionOutcome === 'Loss' ? (trade.losingTrades || 1) : 0;
-                stats[dateStr].trades.push(trade);
+                const dateObj = getDateObj(trade.date);
+                if (dateObj) {
+                    const dateStr = dateObj.toLocaleDateString('en-CA');
+                    if (!stats[dateStr]) stats[dateStr] = { totalProfit: 0, tradeCount: 0, wins: 0, losses: 0, trades: [] };
+                    stats[dateStr].totalProfit += trade.sessionProfit || 0;
+                    const sessionTrades = trade.totalTrades || 1;
+                    stats[dateStr].tradeCount += sessionTrades;
+                    stats[dateStr].wins += trade.sessionOutcome === 'Win' ? (trade.winningTrades || 1) : 0;
+                    stats[dateStr].losses += trade.sessionOutcome === 'Loss' ? (trade.losingTrades || 1) : 0;
+                    stats[dateStr].trades.push(trade);
+                }
             }
         });
         return stats;
@@ -116,111 +130,76 @@ export const CalendarView = ({ user, db, activeJournalId }: CalendarProps) => {
 
     const handleDayClick = (dayStr: string) => {
         if (dailyStats[dayStr]) {
-            setSelectedDayStats({
+            const stat = dailyStats[dayStr];
+            const modalStats: ModalDayStats = {
                 date: dayStr,
-                ...dailyStats[dayStr]
-            });
+                totalProfit: stat.totalProfit,
+                tradeCount: stat.tradeCount,
+                wins: stat.wins,
+                losses: stat.losses,
+                trades: stat.trades.map(convertToModalTrade)
+            };
+            setSelectedDayStats(modalStats);
         }
     };
 
-    const handleWeekClick = (weekDays: { dayStr: string; day: Date }[]) => {
-        const weeklyData = {
-            totalProfit: 0,
-            tradeCount: 0,
-            wins: 0,
-            losses: 0,
-            dailyBreakdown: [] as Array<{ date: string; totalProfit: number; tradeCount: number; wins: number; losses: number; trades: Trade[] }>,
-            startDate: weekDays[0].dayStr,
-            endDate: weekDays[6].dayStr
-        };
-
+    const handleWeekClick = (weekDays: Array<{ dayStr: string; day: Date }>) => {
+        const weeklyData: Omit<ModalWeekStats, 'startDate' | 'endDate'> = { totalProfit: 0, tradeCount: 0, wins: 0, losses: 0, dailyBreakdown: [] };
+        let hasTrades = false;
         weekDays.forEach(day => {
             const stat = dailyStats[day.dayStr];
             if (stat) {
+                hasTrades = true;
                 weeklyData.totalProfit += stat.totalProfit;
                 weeklyData.tradeCount += stat.tradeCount;
                 weeklyData.wins += stat.wins;
                 weeklyData.losses += stat.losses;
-                weeklyData.dailyBreakdown.push({ date: day.dayStr, ...stat });
+                weeklyData.dailyBreakdown.push({
+                    date: day.dayStr,
+                    totalProfit: stat.totalProfit,
+                    tradeCount: stat.tradeCount,
+                    wins: stat.wins,
+                    losses: stat.losses,
+                    trades: stat.trades.map(convertToModalTrade)
+                });
             }
         });
-
-        if (weeklyData.tradeCount > 0) {
-            setSelectedWeekStats(weeklyData);
-        }
+        if (hasTrades) { setSelectedWeekStats({ ...weeklyData, startDate: weekDays[0].dayStr, endDate: weekDays[6].dayStr }); }
     }
 
-    const changeMonth = (offset: number) => {
-        setCurrentDate(prev => {
-            const newDate = new Date(prev);
-            newDate.setMonth(newDate.getMonth() + offset);
-            return newDate;
-        });
-    };
+    const changeMonth = (offset: number) => setCurrentDate(prev => { const newDate = new Date(prev); newDate.setMonth(newDate.getMonth() + offset); return newDate; });
 
-    const renderHeader = () => (
-        <div className="flex justify-between items-center mb-6">
-            <button
-                onClick={() => changeMonth(-1)}
-                className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "dark:hover:bg-gray-700" : "hover:bg-gray-100"}`}
-            >
-                <ChevronLeft />
-            </button>
-            <h2 className={`text-2xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-200" : "text-gray-800"}`}>
-                {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentDate)}
-            </h2>
-            <button
-                onClick={() => changeMonth(1)}
-                className={`p-2 rounded-full ${theme === "dark" || isSystemDark ? "dark:hover:bg-gray-700" : "hover:bg-gray-100"}`}
-            >
-                <ChevronRight />
-            </button>
-        </div>
-    );
-
-    const renderDays = () => (
-        <div className={`grid grid-cols-8 text-center text-sm font-semibold ${theme === "dark" || isSystemDark ? "dark:text-gray-400" : "text-gray-500"}`}>
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Weekly'].map(day => (
-                <div key={day} className={`py-2 border-b ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"}`}>
-                    {day}
-                </div>
-            ))}
-        </div>
-    );
+    const renderHeader = () => (<div className="flex justify-between items-center mb-6"><button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronLeft /></button><h2 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-200">{new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentDate)}</h2><button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronRight /></button></div>);
+    const renderDays = () => (<div className="grid grid-cols-8 text-center text-gray-500 dark:text-gray-400 text-xs md:text-sm font-semibold">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Weekly'].map(day => <div key={day} className="py-2 border-b border-gray-200 dark:border-gray-700">{day}</div>)}</div>);
 
     const renderCells = () => {
         const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         const startDate = new Date(monthStart); startDate.setDate(startDate.getDate() - monthStart.getDay());
-        const endDate = new Date(monthEnd); endDate.setDate(endDate.getDate() + (6 - monthEnd.getDay()));
-        const rows = []; const day = new Date(startDate);
+        const rows = [];
+        const day = new Date(startDate);
+        let weekIndex = 0;
 
-        while (day <= endDate) {
-            const daysInWeek: { dayStr: string; day: Date }[] = [];
+        while (day <= monthEnd) {
+            const daysInWeek: Array<{ dayStr: string; day: Date }> = [];
             let weeklyProfit = 0;
             let hasTrades = false;
 
             for (let i = 0; i < 7; i++) {
-                const dayStr = day.toISOString().split('T')[0];
+                const dayStr = day.toLocaleDateString('en-CA');
                 const stat = dailyStats[dayStr];
                 const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-
-                if (stat && isCurrentMonth) {
-                    weeklyProfit += stat.totalProfit;
-                    hasTrades = true;
-                }
-
+                if (stat && isCurrentMonth) { weeklyProfit += stat.totalProfit; hasTrades = true; }
                 daysInWeek.push({ dayStr, day: new Date(day) });
                 day.setDate(day.getDate() + 1);
             }
 
             rows.push(
-                <div key={day.toISOString()} className="grid grid-cols-8">
+                <div key={`week-${weekIndex}`} className="grid grid-cols-8">
                     {daysInWeek.map(({ dayStr, day }) => {
                         const stat = dailyStats[dayStr];
                         const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                        let style = {};
-                        let clickableClass = 'cursor-default';
+                        let style = {}, clickableClass = 'cursor-default';
                         if (stat && isCurrentMonth) {
                             const baseColor = stat.totalProfit >= 0 ? '34, 197, 94' : '239, 68, 68';
                             const opacity = Math.min(Math.abs(stat.totalProfit) / 500, 0.7);
@@ -228,36 +207,26 @@ export const CalendarView = ({ user, db, activeJournalId }: CalendarProps) => {
                             clickableClass = 'cursor-pointer hover:ring-2 hover:ring-blue-500';
                         }
                         return (
-                            <div key={dayStr} style={style} onClick={() => handleDayClick(dayStr)} className={`border-t border-r ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"} p-2 h-32 flex flex-col transition-all duration-200 ${clickableClass} ${!isCurrentMonth ? `${theme === "dark" || isSystemDark ? "dark:bg-gray-800/50 dark:text-gray-400" : "bg-gray-50 text-gray-400"}` : `${theme === "dark" || isSystemDark ? "dark:bg-gray-800" : "bg-white"}`}`}>
-                                <span className="font-bold self-end">{day.getDate()}</span>
-                                {stat && isCurrentMonth && (
-                                    <div className={`mt-1 text-xs text-left font-medium ${stat.totalProfit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                                        <p>Trades: {stat.tradeCount}</p>
-                                        <p className="font-bold">${stat.totalProfit.toFixed(2)}</p>
-                                    </div>
-                                )}
+                            <div key={dayStr} style={style} onClick={() => handleDayClick(dayStr)} className={`border-t border-r border-gray-200 dark:border-gray-700 p-1 md:p-2 h-24 md:h-32 flex flex-col transition-all duration-200 ${clickableClass} ${!isCurrentMonth ? 'bg-gray-50 dark:bg-gray-800/50 text-gray-400' : 'bg-white dark:bg-gray-800'}`}>
+                                <span className="font-bold self-end text-xs md:text-sm">{day.getDate()}</span>
+                                {stat && isCurrentMonth && (<div className={`mt-1 text-xs text-left font-medium ${stat.totalProfit >= 0 ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}><p className="hidden sm:block">Trades: {stat.tradeCount}</p><p className="font-bold">${stat.totalProfit.toFixed(2)}</p></div>)}
                             </div>
                         );
                     })}
-                    <div onClick={() => handleWeekClick(daysInWeek)} className={`border-t border-r ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"} p-2 h-32 flex flex-col justify-center items-center text-center font-semibold ${hasTrades ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : 'text-gray-400'} ${weeklyProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {hasTrades && <span>${weeklyProfit.toFixed(2)}</span>}
-                    </div>
+                    <div onClick={() => handleWeekClick(daysInWeek)} className={`border-t border-r border-gray-200 dark:border-gray-700 p-2 h-24 md:h-32 flex flex-col justify-center items-center text-center font-semibold ${hasTrades ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : 'text-gray-400'} ${weeklyProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>{hasTrades && <span className="text-sm md:text-base">${weeklyProfit.toFixed(2)}</span>}</div>
                 </div>
             );
+            weekIndex++;
         }
-        return <div className={`border-l border-b  ${theme === "dark" || isSystemDark ? "dark:border-gray-700" : "border-gray-200"}`}>{rows}</div>;
+        return <div className="border-l border-b border-gray-200 dark:border-gray-700">{rows}</div>;
     };
 
     return (
         <div className="space-y-6">
-            <h1 className={`text-4xl font-bold ${theme === "dark" || isSystemDark ? "dark:text-gray-100" : "text-gray-800" }`}>Trading Calendar</h1>
-            <div className={`p-6 rounded-xl shadow-lg border ${theme === "dark" || isSystemDark ? "dark:bg-gray-800 dark:border-gray-700" : "bg-white border-gray-200"} `}>
-                {renderHeader()}
-                {renderDays()}
-                {renderCells()}
-            </div>
-            {selectedDayStats && <DayStatsModal stats={selectedDayStats} onClose={() => setSelectedDayStats(null)} theme={theme} isSystemDark={isSystemDark} />}
-            {selectedWeekStats && <WeekStatsModal stats={selectedWeekStats} onClose={() => setSelectedWeekStats(null)} theme={theme} isSystemDark={isSystemDark} />}
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-gray-100">Trading Calendar</h1>
+            <div className="bg-white dark:bg-gray-800 p-2 md:p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">{renderHeader()}{renderDays()}{renderCells()}</div>
+            {selectedDayStats && <DayStatsModal stats={selectedDayStats} onClose={() => setSelectedDayStats(null)} />}
+            {selectedWeekStats && <WeekStatsModal stats={selectedWeekStats} onClose={() => setSelectedWeekStats(null)} />}
         </div>
     );
 };
