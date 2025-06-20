@@ -1,13 +1,14 @@
 'use client';
 
 import { Firestore, Timestamp } from 'firebase/firestore';
-import { PlusCircle, Edit, Download, Sparkles } from 'lucide-react';
+import { PlusCircle, Edit, Download, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from "react";
 import { downloadCSV } from "../utils/downloadCSV";
 import { Modal } from "./PopupModal/Modal";
 import { User } from 'firebase/auth';
 import { chat } from '../lib/grokConfig';
 import { HumanMessage } from '@langchain/core/messages';
+import { ConfirmationModal } from './PopupModal/AlertModals';
 
 interface Journal {
     id: string;
@@ -28,7 +29,8 @@ interface TradeLogsProps {
     showAlert: (message: string) => void;
     trades: Trade[],
     onLogSessionClick: () => void,
-    handleOpenEditTradeModal: (trade: Trade) => void
+    handleOpenEditTradeModal: (trade: Trade) => void,
+    handleDeleteTrade: (tradeToDelete: Trade) => Promise<void>,
 }
 
 interface Trade {
@@ -48,10 +50,11 @@ interface Trade {
     [key: string]: unknown;
 }
 
-export const TradeLogs = ({ trades, onLogSessionClick, handleOpenEditTradeModal }: TradeLogsProps) => {
+export const TradeLogs = ({ trades, onLogSessionClick, handleOpenEditTradeModal, handleDeleteTrade }: TradeLogsProps) => {
     const [aiAnalysis, setAiAnalysis] = useState('');
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
     const [isAiLoading, setIsAiLoading] = useState(false);
+    const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null);
 
     const constructPrompt = (trade: Trade): string => {
         return `Analyze this binary options trade session and provide insights. The session outcome was a ${trade.sessionOutcome} with a profit/loss of $${(trade.sessionProfit ?? 0).toFixed(2)}. The asset was ${trade.asset}. The direction was ${trade.direction}. Number of trades: ${trade.totalTrades || 'N/A'}, Losing trades: ${trade.losingTrades || 'N/A'}. My notes: "${trade.notes || 'None'}". What could I have done better, what did I do well, and what should I look out for next time? Provide the response in clear, concise sections with bullet points.`;
@@ -100,6 +103,7 @@ export const TradeLogs = ({ trades, onLogSessionClick, handleOpenEditTradeModal 
                             <td className="p-3 flex items-center space-x-2">
                                 <button onClick={() => handleOpenEditTradeModal(trade)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 rounded-full"><Edit className="w-4 h-4" /></button>
                                 <button onClick={() => getAiAnalysis(trade)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-purple-500 rounded-full" title="Get AI Analysis"><Sparkles className="w-4 h-4" /></button>
+                                <button onClick={() => setTradeToDelete(trade)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-500 rounded-full" title="Delete Trade"><Trash2 className="w-4 h-4" /></button>
                             </td>
                         </tr>))}
                     </tbody>
@@ -109,6 +113,18 @@ export const TradeLogs = ({ trades, onLogSessionClick, handleOpenEditTradeModal 
             <Modal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} title="AI Trade Analysis">
                 {isAiLoading ? (<div className="flex flex-col items-center justify-center h-48"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-500"></div><p className="mt-4 text-gray-500 dark:text-gray-400">Analyzing your trade...</p></div>) : (<div className="prose prose-sm dark:prose-invert max-h-96 overflow-y-auto" dangerouslySetInnerHTML={{ __html: aiAnalysis.replace(/\n/g, '<br />') }}></div>)}
             </Modal>
+            <ConfirmationModal
+                isOpen={!!tradeToDelete}
+                onClose={() => setTradeToDelete(null)}
+                title="Delete Trade Session?"
+                message={`Are you sure you want to delete the session for ${tradeToDelete?.asset}? This will permanently remove the record and adjust your balance.`}
+                onConfirm={() => {
+                    if (tradeToDelete) {
+                        handleDeleteTrade(tradeToDelete);
+                        setTradeToDelete(null);
+                    }
+                }}
+            />
         </div>
     );
 };

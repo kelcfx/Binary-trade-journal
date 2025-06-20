@@ -8,7 +8,7 @@ import React from "react";
 import { User } from "firebase/auth";
 import { Firestore } from "firebase/firestore";
 import { AnalogClock } from "./AnalogClock";
-import { PlusCircle } from "lucide-react";
+import { Eye, EyeOff, PlusCircle } from "lucide-react";
 
 interface Journal {
     id: string;
@@ -47,6 +47,10 @@ interface Goal {
     [key: string]: unknown;
 }
 
+interface ToDateLike {
+    toDate: () => Date;
+}
+
 interface DashboardProps {
     user: User,
     activeJournalData: Journal,
@@ -57,9 +61,11 @@ interface DashboardProps {
     activeGoal: Goal | null,
     setActiveView: Dispatch<SetStateAction<string>>,
     onLogSessionClick: () => void,
+    isBalanceVisible: boolean,
+    setIsBalanceVisible: Dispatch<SetStateAction<boolean>>,
 }
 
-export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades, activeGoal, setActiveView, onLogSessionClick }: DashboardProps) => {
+export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades, activeGoal, setActiveView, onLogSessionClick, isBalanceVisible, setIsBalanceVisible }: DashboardProps) => {
     const [isManageBalanceModalOpen, setIsManageBalanceModalOpen] = useState(false);
     const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
     const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
@@ -107,10 +113,6 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades
 
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
-    interface ToDateLike {
-        toDate: () => Date;
-    }
-
     const getDateObj = useCallback((date: string | Date | ToDateLike | null | undefined) => {
         if (!date) return null;
         if (typeof date === 'string') return new Date(date);
@@ -125,6 +127,7 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades
         const tradeDate = getDateObj(t.date as string | Date | ToDateLike | null | undefined);
         return tradeDate && tradeDate >= today;
     });
+
     const todaysProfit = todaysTrades.reduce((s, t) => s + (t.sessionProfit || 0), 0);
     const startOfWeek = new Date(today); startOfWeek.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1));
     const weeklyProfit = trades.filter(t => {
@@ -206,13 +209,18 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div
                     className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 flex flex-col cursor-pointer transition-transform transform hover:scale-[1.02]"
-                    onClick={() => setIsManageBalanceModalOpen(true)}
+                    onClick={() => isBalanceVisible && setIsManageBalanceModalOpen(true)}
                 >
                     <div className="flex flex-col items-center justify-center flex-grow p-6">
-                        <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-1">Trading Balance</h3>
-                        <p className="text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100">${activeJournalData.balance.toFixed(2)}</p>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-1">Trading Balance</h3>
+                            <button onClick={(e) => { e.stopPropagation(); setIsBalanceVisible(!isBalanceVisible); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                                {isBalanceVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                        <p className="text-4xl md:text-5xl font-bold text-gray-800 dark:text-gray-100">{isBalanceVisible ? `$${activeJournalData.balance.toFixed(2)}` : '$******'}</p>
                     </div>
-                    <div className="h-32 -mx-1 -mb-1">
+                    <div className={`h-32 -mx-1 -mb-1 transition-all ${!isBalanceVisible ? 'filter blur-md' : ''}`}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={balanceHistory} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                                 <defs>
@@ -223,7 +231,7 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades
                                 </defs>
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', border: '1px solid #e5e7eb', borderRadius: '12px' }}
-                                    formatter={(value) => [`$${typeof value === 'number' ? value.toFixed(2) : value}`, 'Balance']}
+                                    formatter={(value) => [isBalanceVisible ? `$${typeof value === 'number' ? value.toFixed(2) : value}` : 'Hidden', 'Balance']}
                                 />
                                 <Area type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={2} fill="url(#balanceGradient)" />
                             </AreaChart>
@@ -271,7 +279,7 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades
                         <h3 className="text-md font-semibold text-gray-500 dark:text-gray-400 mb-1">Risk Management</h3>
                         <div className="flex items-baseline space-x-2">
                             <span className="text-2xl font-bold text-red-500">{activeJournalData.riskPercentage}%</span>
-                            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">(${((activeJournalData.balance * activeJournalData.riskPercentage) / 100).toFixed(2)})</span>
+                            {isBalanceVisible && <span className="text-lg font-medium text-gray-700 dark:text-gray-300">(${((activeJournalData.balance * activeJournalData.riskPercentage) / 100).toFixed(2)})</span>}
                         </div>
                     </button>
                 </div>
@@ -279,17 +287,7 @@ export const Dashboard = ({ user, activeJournalData, db, activeJournalId, trades
 
             <Modal isOpen={isManageBalanceModalOpen} onClose={() => setIsManageBalanceModalOpen(false)} title="Manage Balance"><div className="space-y-4"><p className="text-gray-600 dark:text-gray-300">Enter amount to deposit or withdraw.</p><input type="number" value={transactionAmount} onChange={(e) => setTransactionAmount(e.target.value)} placeholder="Amount" className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" /><div className="flex space-x-4"><button onClick={() => handleTransaction('deposit')} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg">Deposit</button><button onClick={() => handleTransaction('withdraw')} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg">Withdraw</button></div></div></Modal>
             <Modal isOpen={isGoalModalOpen} onClose={() => setIsGoalModalOpen(false)} title="Update Profit Targets"><div className="space-y-4"><label className="block"><span className="text-gray-600 dark:text-gray-300">Daily Profit Target ($)</span><input type="number" value={newGoals.daily} onChange={(e) => setNewGoals({ ...newGoals, daily: parseFloat(e.target.value) || 0 })} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" /></label><label className="block"><span className="text-gray-600 dark:text-gray-300">Weekly Profit Goal ($)</span><input type="number" value={newGoals.weekly} onChange={(e) => setNewGoals({ ...newGoals, weekly: parseFloat(e.target.value) || 0 })} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" /></label><button onClick={handleGoalUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Save Goals</button></div></Modal>
-
-            <Modal isOpen={isRiskModalOpen} onClose={() => setIsRiskModalOpen(false)} title="Adjust Risk">
-                <div className="space-y-4">
-                    <label className="block">
-                        <span className="text-gray-600 dark:text-gray-300">Risk Percentage per Trade (%)</span>
-                        <input type="number" value={newRisk} onChange={(e) => setNewRisk(parseFloat(e.target.value) || 0)} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">This will risk <span className="font-bold">${((activeJournalData.balance * newRisk) / 100).toFixed(2)}</span> of your current balance per trade.</p>
-                    <button onClick={handleRiskUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Set Risk</button>
-                </div>
-            </Modal>
+            <Modal isOpen={isRiskModalOpen} onClose={() => setIsRiskModalOpen(false)} title="Adjust Risk"><div className="space-y-4"><label className="block"><span className="text-gray-600 dark:text-gray-300">Risk Percentage per Trade (%)</span><input type="number" value={newRisk} onChange={(e) => setNewRisk(parseFloat(e.target.value) || 0)} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 p-3 rounded-lg mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500" /></label><p className="text-sm text-gray-500 dark:text-gray-400 text-center">This will risk <span className="font-bold">${((activeJournalData.balance * newRisk) / 100).toFixed(2)}</span> of your current balance per trade.</p><button onClick={handleRiskUpdate} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">Set Risk</button></div></Modal>
         </div>
     );
 };

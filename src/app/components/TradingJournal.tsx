@@ -75,6 +75,14 @@ export const TradingJournal = ({ user, theme, setTheme, showAlert }: TradingJour
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [initialLoad, setInitialLoad] = useState(true);
 
+    const [isBalanceVisible, setIsBalanceVisible] = useState(
+        localStorage.getItem('isBalanceVisible') === 'false' ? false : true
+    );
+
+    useEffect(() => {
+        localStorage.setItem('isBalanceVisible', String(isBalanceVisible));
+    }, [isBalanceVisible]);
+
     // State for Trade Log Modal (lifted up)
     const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
     const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
@@ -200,6 +208,39 @@ export const TradingJournal = ({ user, theme, setTheme, showAlert }: TradingJour
         setIsTradeModalOpen(true);
     };
 
+    const handleDeleteTrade = async (tradeToDelete: Trade) => {
+        if (!tradeToDelete || !appId || !activeJournalId || !activeJournalData) return;
+        const journalRef = doc(db, 'artifacts', appId, 'users', user.uid, 'journals', activeJournalId);
+        const tradeRef = doc(journalRef, 'trades', tradeToDelete.id);
+        const profitToReverse = tradeToDelete.sessionProfit || 0;
+
+        const batch = writeBatch(db);
+        batch.delete(tradeRef);
+        batch.update(journalRef, {
+            balance: activeJournalData.balance - profitToReverse
+        });
+
+        try {
+            await batch.commit();
+            showAlert('Trade session deleted successfully.');
+            // After deletion, re-evaluate achievements for that period
+            if (tradeToDelete.date) {
+                let tradeDate: Date;
+                if (typeof (tradeToDelete.date as Timestamp).toDate === "function") {
+                    tradeDate = (tradeToDelete.date as Timestamp).toDate();
+                } else if (typeof tradeToDelete.date === "string" || tradeToDelete.date instanceof Date) {
+                    tradeDate = new Date(tradeToDelete.date as string | Date);
+                } else {
+                    tradeDate = new Date();
+                }
+                await updateAchievements({ tradeDate, journalRef, user });
+            }
+        } catch (error) {
+            console.error("Error deleting trade: ", error);
+            showAlert('Failed to delete trade session.');
+        }
+    };
+
     // Effect to load initial journal from localStorage or default
     useEffect(() => {
         if (journals.length > 0 && initialLoad) {
@@ -320,7 +361,7 @@ export const TradingJournal = ({ user, theme, setTheme, showAlert }: TradingJour
             return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div></div>;
         }
 
-        const props = { user, activeJournalData, db, activeJournalId, showAlert, trades, activeGoal, setActiveView, onLogSessionClick: handleOpenNewTradeModal, handleOpenEditTradeModal };
+        const props = { user, activeJournalData, db, activeJournalId, showAlert, trades, activeGoal, setActiveView, onLogSessionClick: handleOpenNewTradeModal, handleOpenEditTradeModal, handleDeleteTrade, isBalanceVisible, setIsBalanceVisible };
 
         switch (activeView) {
             case 'Dashboard': return <Dashboard {...props} />;
@@ -387,18 +428,18 @@ export const TradingJournal = ({ user, theme, setTheme, showAlert }: TradingJour
                         time: (editingTrade?.time ?? newTrade.time ?? new Date().toTimeString().slice(0, 5)),
                     }}
                     onInputChange={handleTradeInputChange}
-                    onSubmit={(e) => { 
-                        e.preventDefault(); 
-                        const tradeToSave = editingTrade || { 
-                            ...newTrade, 
-                            id: '', 
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const tradeToSave = editingTrade || {
+                            ...newTrade,
+                            id: '',
                             totalTrades: newTrade.totalTrades === '' ? undefined : Number(newTrade.totalTrades),
                             losingTrades: newTrade.losingTrades === '' ? undefined : Number(newTrade.losingTrades),
                             investmentPerTrade: newTrade.investmentPerTrade === '' ? undefined : Number(newTrade.investmentPerTrade),
                             roi: newTrade.roi === '' ? undefined : Number(newTrade.roi),
                             sessionProfit: newTrade.sessionProfit === '' ? undefined : Number(newTrade.sessionProfit)
                         };
-                        processAndSaveTrade(tradeToSave as Trade); 
+                        processAndSaveTrade(tradeToSave as Trade);
                     }}
                     isManualProfit={isManualProfit}
                     setIsManualProfit={setIsManualProfit}
